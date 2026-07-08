@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { Users2, Trophy, HeartHandshake, ShieldCheck } from 'lucide-react';
 
 const stats = [
-  { label: 'Протестировано', value: '1500+', icon: Users2, color: 'text-brand-yellow' },
-  { label: 'Обучено коллег', value: '1000+', icon: HeartHandshake, color: 'text-brand-accent' },
-  { label: 'Лет опыта', value: '10+', icon: Trophy, color: 'text-brand-green' }
+  { label: 'Протестировано', value: '2500+', icon: Users2, color: 'text-brand-yellow' },
+  { label: 'Обучено коллег', value: '2000+', icon: HeartHandshake, color: 'text-brand-accent' },
+  { label: 'Лет опыта в HR', value: '15+', icon: Trophy, color: 'text-brand-green' }
 ];
 
 const results = [
@@ -18,12 +18,9 @@ const results = [
 export default function WhyGallup() {
   return (
     <section id="methodology" className="relative bg-white selection:bg-brand-yellow selection:text-brand-dark">
-      {/* Decorative transition */}
-      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-20"></div>
-
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 py-24">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 py-14 md:py-24">
         {/* Why Gallup Section */}
-        <div className="grid lg:grid-cols-2 gap-20 items-center mb-40">
+        <div className="grid lg:grid-cols-2 gap-10 md:gap-20 items-center mb-20 md:mb-40">
           <motion.div 
              initial={{ opacity: 0, x: -30 }}
              whileInView={{ opacity: 1, x: 0 }}
@@ -38,7 +35,7 @@ export default function WhyGallup() {
                 Методология <span className="text-brand-dark font-bold">CliftonStrengths®</span> от Gallup — это золотой стандарт в развитии талантов, основанный на 40 годах исследований.
               </p>
               <p>
-                Вместо того чтобы тратить годы на исправление "слабостей", мы учим вас инвестировать в то, что дано вам природой. Это в <span className="text-brand-accent font-bold">6 раз эффективнее</span> традиционного подхода.
+                Вместо того чтобы тратить годы на исправление "слабостей", мы учим инвестировать в то, что дано вам природой. Это в <span className="text-brand-accent font-bold">6 раз эффективнее</span> — для отдельного человека, команды или всей компании.
               </p>
             </div>
           </motion.div>
@@ -67,14 +64,14 @@ export default function WhyGallup() {
       </div>
 
       {/* Revitalized Experience Section - Dark Panel */}
-      <div className="bg-brand-dark py-32 relative overflow-hidden">
+      <div className="bg-brand-dark py-16 md:py-32 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 blur-[100px]">
            <div className="absolute top-0 left-0 w-96 h-96 bg-brand-accent rounded-full -translate-x-1/2 -translate-y-1/2"></div>
            <div className="absolute bottom-0 right-0 w-96 h-96 bg-brand-yellow rounded-full translate-x-1/2 translate-y-1/2"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-           <div className="max-w-2xl mb-24">
+           <div className="max-w-2xl mb-14 md:mb-24">
               <div className="flex items-center gap-4 mb-6">
                 <ShieldCheck className="text-brand-yellow" size={32} />
                 <span className="text-xs font-black uppercase tracking-[0.4em] text-brand-yellow italic">Certified Experience</span>

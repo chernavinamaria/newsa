@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle2, Layers, Clock, Target } from 'lucide-react';
+import { X, CheckCircle2, Layers, Clock } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, product }) {
   if (!product) return null;
@@ -67,30 +67,26 @@ export default function Modal({ isOpen, onClose, product }) {
                   </div>
                 </section>
 
-                <section>
-                   <h3 className="text-lg md:text-xl font-black uppercase italic tracking-widest text-brand-dark mb-8 md:mb-10 flex items-center gap-3 md:gap-4">
-                      <Target className="text-brand-yellow" size={20} /> Механика
-                   </h3>
-                   <div className="grid gap-4 md:gap-6">
-                     {product.mechanics?.map((step, i) => (
-                       <div key={i} className="flex gap-4 md:gap-8 group">
-                          <div className="text-2xl md:text-4xl font-black text-brand-light group-hover:text-brand-accent transition-colors italic leading-none shrink-0 w-10 md:w-16 text-center">
-                            {step.num || `0${i+1}`}
-                          </div>
-                          <div className="pb-6 md:pb-8 border-b border-brand-light last:border-0 grow">
-                             <h4 className="text-base md:text-lg font-black text-brand-dark uppercase italic mb-1 md:mb-2">{step.title}</h4>
-                             <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">{step.desc}</p>
-                          </div>
-                       </div>
-                     ))}
-                   </div>
-                </section>
+                {/* Механика скрыта до финализации */}
 
-                <div className="py-8 md:pt-12 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-brand-light">
-                   <button className="w-full md:w-auto px-10 py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-accent transition-all shadow-xl">
-                      Связаться с нами
+                <div className="py-8 md:pt-12 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 border-t border-brand-light">
+                   {product.price && (
+                     <div className="flex flex-col">
+                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Стоимость</span>
+                       <span className="text-3xl md:text-4xl font-black italic tracking-tight text-brand-dark">{product.price}</span>
+                     </div>
+                   )}
+                   <button
+                     onClick={() => {
+                       onClose();
+                       setTimeout(() => {
+                         document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
+                       }, 300);
+                     }}
+                     className="w-full md:w-auto px-10 py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-accent transition-all shadow-xl"
+                   >
+                      Пройти тест
                    </button>
-                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Strengths Academy © 2026</span>
                 </div>
               </div>
             </div>
