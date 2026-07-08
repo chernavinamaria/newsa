@@ -9,8 +9,13 @@ export default function Footer() {
 
   useEffect(() => {
     const handler = () => setPrivacyOpen(true);
+    const offerHandler = () => setOfferOpen(true);
     window.addEventListener('open-privacy', handler);
-    return () => window.removeEventListener('open-privacy', handler);
+    window.addEventListener('open-offer', offerHandler);
+    return () => {
+      window.removeEventListener('open-privacy', handler);
+      window.removeEventListener('open-offer', offerHandler);
+    };
   }, []);
   return (
     <footer id="footer" className="bg-brand-dark text-white pt-14 pb-10 md:py-24 md:pb-12 relative overflow-hidden">

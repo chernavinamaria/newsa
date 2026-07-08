@@ -11,12 +11,19 @@ import Footer from './components/Footer'
 import FloatingCTA from './components/FloatingCTA'
 import TalentWheel from './components/TalentWheel'
 import Admin from './components/Admin'
+import PaymentResult from './components/PaymentResult'
 
 function App() {
-  // Simple client-side routing: /admin → admin panel
+  // Simple client-side routing: /admin → admin panel, /payment/* → payment result
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
   if (path === '/admin' || path === '/admin/') {
     return <Admin />;
+  }
+  if (path.startsWith('/payment-success')) {
+    return <PaymentResult ok={true} />;
+  }
+  if (path.startsWith('/payment-fail')) {
+    return <PaymentResult ok={false} />;
   }
 
   return (

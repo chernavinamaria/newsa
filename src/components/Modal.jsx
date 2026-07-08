@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle2, Layers, Clock } from 'lucide-react';
+import { X, CheckCircle2, Layers, Clock, CreditCard } from 'lucide-react';
+import PaymentModal from './PaymentModal';
 
 export default function Modal({ isOpen, onClose, product }) {
+  const [payOpen, setPayOpen] = useState(false);
   if (!product) return null;
 
   return (
@@ -76,21 +78,37 @@ export default function Modal({ isOpen, onClose, product }) {
                        <span className="text-3xl md:text-4xl font-black italic tracking-tight text-brand-dark">{product.price}</span>
                      </div>
                    )}
-                   <button
-                     onClick={() => {
-                       onClose();
-                       setTimeout(() => {
-                         document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
-                       }, 300);
-                     }}
-                     className="w-full md:w-auto px-10 py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-accent transition-all shadow-xl"
-                   >
-                      Пройти тест
-                   </button>
+                   <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                     {product.payId && (
+                       <button
+                         onClick={() => setPayOpen(true)}
+                         className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-5 bg-brand-accent text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-dark transition-all shadow-xl"
+                       >
+                          <CreditCard size={18} /> Оплатить
+                       </button>
+                     )}
+                     <button
+                       onClick={() => {
+                         onClose();
+                         setTimeout(() => {
+                           document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
+                         }, 300);
+                       }}
+                       className={`w-full md:w-auto px-10 py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${
+                         product.payId
+                           ? 'bg-brand-light text-brand-dark hover:bg-gray-200'
+                           : 'bg-brand-dark text-white hover:bg-brand-accent'
+                       }`}
+                     >
+                        {product.payId ? 'Задать вопрос' : 'Пройти тест'}
+                     </button>
+                   </div>
                 </div>
               </div>
             </div>
           </motion.div>
+
+          <PaymentModal isOpen={payOpen} onClose={() => setPayOpen(false)} product={product} />
         </div>
       )}
     </AnimatePresence>

@@ -8,6 +8,7 @@ const programs = [
   // ============ B2C: Для физ. лиц ============
   {
     segment: 'b2c',
+    payId: 'start',
     title: 'Старт с сильных сторон',
     audience: 'Самостоятельно',
     duration: 'Онлайн доступ',
@@ -29,6 +30,7 @@ const programs = [
   },
   {
     segment: 'b2c',
+    payId: 'career-consult',
     title: 'Карьерное консультирование',
     audience: 'Для частных лиц',
     duration: '1,5 часа + сопровождение',
@@ -74,6 +76,7 @@ const programs = [
   },
   {
     segment: 'b2c',
+    payId: 'career-coaching',
     title: 'Карьерный коучинг',
     audience: 'Follow-up сессии',
     duration: 'Серия сессий',
@@ -92,6 +95,7 @@ const programs = [
   },
   {
     segment: 'b2c',
+    payId: 'teens',
     title: 'Профориентация подростков 16+',
     audience: 'Для подростка и родителя',
     duration: 'Парная консультация',

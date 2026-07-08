@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.9",
     "framer-motion": "^11.0.0",
     "lucide-react": "latest",
     "pdf-parse": "latest",
