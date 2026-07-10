@@ -50,15 +50,17 @@ export default function Team() {
   }, []);
 
   const handleOpenMember = (member, index) => {
-    window.location.hash = `team-${index}`;
+    // pushState (а не hash=) гарантирует запись в истории для отката
+    window.history.pushState({ member: index }, '', `#team-${index}`);
     setActiveMember(member);
   };
 
   const handleCloseMember = () => {
+    // Закрываем сразу через состояние — не полагаемся на popstate/history.back
+    // (в Safari на iOS программный back() ненадёжен и модалка «зависала»).
+    setActiveMember(null);
     if (window.location.hash.startsWith('#team-')) {
-      window.history.back();
-    } else {
-      setActiveMember(null);
+      window.history.back(); // подчистить #team-N из URL/истории (гарантированно есть запись)
     }
   };
 
@@ -116,6 +118,8 @@ export default function Team() {
               className="relative w-full h-full md:max-w-4xl md:max-h-[90vh] bg-white text-brand-dark md:rounded-[3rem] overflow-y-auto flex flex-col md:flex-row shadow-2xl"
             >
               <button
+                type="button"
+                aria-label="Закрыть"
                 onClick={handleCloseMember}
                 className="absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-brand-light hover:bg-gray-200 transition-colors z-20 rounded-full"
               >

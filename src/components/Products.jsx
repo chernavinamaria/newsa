@@ -279,15 +279,16 @@ export default function Products() {
   }, []);
 
   const handleOpenProduct = (program, index) => {
-    window.location.hash = `program-${index}`;
+    window.history.pushState({ program: index }, '', `#program-${index}`);
     setSelectedProduct(program);
   };
 
   const handleCloseProduct = () => {
+    // Закрываем сразу через состояние — не зависим от popstate/history.back
+    // (в Safari на iOS программный back() ненадёжен, модалка не закрывалась крестиком).
+    setSelectedProduct(null);
     if (window.location.hash.startsWith('#program-')) {
       window.history.back();
-    } else {
-      setSelectedProduct(null);
     }
   };
 
