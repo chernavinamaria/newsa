@@ -141,8 +141,10 @@ export const handler = async (event) => {
       body: JSON.stringify({
         type: 'payment_init',
         name: name || '',
-        contact: [email, phone].filter(Boolean).join(' / '),
-        source: `${product.title} · ${product.amount / 100} ₽ · ${orderId}`
+        // ВАЖНО: CRM принимает contact = ТОЛЬКО чистый email или телефон (не "email / телефон")
+        contact: email,
+        source: `${product.title} · ${product.amount / 100} ₽ · ${orderId}`,
+        notes: phone ? `тел: ${phone}` : ''
       }),
       redirect: 'follow'
     })

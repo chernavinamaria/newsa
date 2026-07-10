@@ -85,8 +85,10 @@ export const handler = async (event) => {
         body: JSON.stringify({
           type: 'payment_success',
           name: data.Name || '',
-          contact: [data.Email, data.Phone].filter(Boolean).join(' / ') || (n.Pan || ''),
-          source: `${n.OrderId} · ${amountRub} ₽ · PaymentId ${n.PaymentId}`
+          // CRM принимает contact = ТОЛЬКО чистый email/телефон; карту и телефон кладём в заметки
+          contact: data.Email || '',
+          source: `${data.Product ? data.Product + ' · ' : ''}${n.OrderId} · ${amountRub} ₽`,
+          notes: [data.Phone && `тел: ${data.Phone}`, n.Pan && `карта: ${n.Pan}`].filter(Boolean).join(', ')
         }),
         redirect: 'follow'
       }),

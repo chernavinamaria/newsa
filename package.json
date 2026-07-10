@@ -11,8 +11,6 @@
     "@netlify/blobs": "^10.7.9",
     "framer-motion": "^11.0.0",
     "lucide-react": "latest",
-    "pdf-parse": "latest",
-    "pdf2json": "^4.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CRM_URL } from '../config';
-import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare } from 'lucide-react';
+import { CRM_URL, BACKEND_URL } from '../config';
+import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare, Send, KeyRound } from 'lucide-react';
 
 const STATUSES = ['Новая', 'В работе', 'Ожидает оплаты', 'Оплачено', 'Закрыто', 'Отказ'];
 const STATUS_COLORS = {
@@ -45,6 +45,53 @@ export default function Admin() {
   const [selected, setSelected] = useState(null);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
+
+  // Отправка кодов Gallup из карточки заявки
+  const [codesOpen, setCodesOpen] = useState(false);
+  const [codesEmail, setCodesEmail] = useState('');
+  const [codesName, setCodesName] = useState('');
+  const [codesText, setCodesText] = useState('');
+  const [codesStatus, setCodesStatus] = useState('idle'); // idle | sending | sent | error
+  const [codesError, setCodesError] = useState('');
+
+  const openCodesPanel = (lead) => {
+    // Контакт бывает "email / телефон" — вытаскиваем email
+    const emailMatch = String(lead.Контакт || '').match(/[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+/);
+    setCodesEmail(emailMatch ? emailMatch[0] : '');
+    setCodesName(lead.Имя && lead.Имя !== '—' ? lead.Имя : '');
+    setCodesText('');
+    setCodesStatus('idle');
+    setCodesError('');
+    setCodesOpen(true);
+  };
+
+  const sendCodes = async () => {
+    setCodesStatus('sending');
+    setCodesError('');
+    try {
+      const resp = await fetch(`${BACKEND_URL}/send-codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, email: codesEmail.trim(), name: codesName.trim(), codes: codesText })
+      });
+      const data = await resp.json();
+      if (!data.ok) {
+        setCodesStatus('error');
+        setCodesError(data.error || 'Не удалось отправить');
+        return;
+      }
+      setCodesStatus('sent');
+      // Фиксируем факт отправки в заметках заявки
+      const stamp = new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const note = `${selected.Заметки ? selected.Заметки + ' | ' : ''}Коды отправлены ${stamp} → ${codesEmail.trim()}`;
+      await apiPost({ type: 'admin_edit', password, row: selected._row, field: 'Заметки', value: note });
+      setSelected({ ...selected, Заметки: note });
+      loadLeads();
+    } catch {
+      setCodesStatus('error');
+      setCodesError('Ошибка сети');
+    }
+  };
 
   useEffect(() => {
     if (password && !loggedIn) tryLogin(password, true);
@@ -237,7 +284,7 @@ export default function Admin() {
             <div
               key={l._row}
               className="bg-white rounded-2xl p-4 md:p-5 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelected(l)}
+              onClick={() => { setSelected(l); setCodesOpen(false); }}
             >
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <div className="flex-grow min-w-0">
@@ -343,6 +390,65 @@ export default function Admin() {
                   </div>
                 </div>
               )}
+
+              {/* Отправка кодов Gallup */}
+              <div className="pt-4 border-t border-brand-light">
+                {!codesOpen ? (
+                  <button
+                    onClick={() => openCodesPanel(selected)}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-dark hover:bg-brand-accent text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
+                  >
+                    <KeyRound size={14} /> Отправить коды Gallup
+                  </button>
+                ) : (
+                  <div className="bg-brand-light rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-brand-dark/60">Отправка кодов Gallup</div>
+                      <button onClick={() => setCodesOpen(false)} className="p-1 text-gray-400 hover:text-brand-dark"><X size={16} /></button>
+                    </div>
+                    {codesStatus === 'sent' ? (
+                      <div className="py-4 text-center">
+                        <div className="text-brand-green font-black uppercase tracking-widest text-sm mb-1">✓ Отправлено</div>
+                        <div className="text-xs text-gray-500">Письмо с кодами ушло на {codesEmail}</div>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="email"
+                          value={codesEmail}
+                          onChange={e => setCodesEmail(e.target.value)}
+                          placeholder="Email клиента *"
+                          className="w-full bg-white border-2 border-transparent focus:border-brand-yellow rounded-xl px-4 py-3 text-sm text-brand-dark focus:outline-none"
+                        />
+                        <input
+                          value={codesName}
+                          onChange={e => setCodesName(e.target.value)}
+                          placeholder="Имя клиента (для обращения в письме)"
+                          className="w-full bg-white border-2 border-transparent focus:border-brand-yellow rounded-xl px-4 py-3 text-sm text-brand-dark focus:outline-none"
+                        />
+                        <textarea
+                          value={codesText}
+                          onChange={e => setCodesText(e.target.value)}
+                          rows={3}
+                          placeholder={'Коды доступа — по одному в строке\nНапример:\nABCD-EFGH-IJKL'}
+                          className="w-full bg-white border-2 border-transparent focus:border-brand-yellow rounded-xl px-4 py-3 text-sm font-mono text-brand-dark focus:outline-none"
+                        />
+                        {codesError && <div className="text-xs font-bold text-red-500">{codesError}</div>}
+                        <button
+                          onClick={sendCodes}
+                          disabled={codesStatus === 'sending' || !codesEmail.trim() || !codesText.trim()}
+                          className="w-full flex items-center justify-center gap-2 py-3 bg-brand-accent hover:bg-brand-dark text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors disabled:opacity-50"
+                        >
+                          <Send size={14} /> {codesStatus === 'sending' ? 'Отправляю…' : 'Отправить письмо с кодами'}
+                        </button>
+                        <div className="text-[10px] text-gray-400 leading-relaxed">
+                          Клиент получит брендовое письмо с {'кодом(ами)'} и инструкцией по активации на gallup.com/access. Факт отправки запишется в заметки заявки.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="pt-4 border-t border-brand-light flex gap-3">
                 <button
