@@ -5,7 +5,7 @@
 import { createHash } from 'crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
 
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbxEZl8aNXzVz1GYI06UN4zJvw2Z2hcedpHAmQog1sqc47LgrshJnrVFaUcX5O0YPHaM/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {

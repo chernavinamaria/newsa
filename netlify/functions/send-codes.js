@@ -2,7 +2,7 @@
 // Защита: пароль админки проверяется через CRM (admin_verify) — единый источник истины.
 // Env vars: RESEND_API_KEY, FROM_EMAIL
 
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbxEZl8aNXzVz1GYI06UN4zJvw2Z2hcedpHAmQog1sqc47LgrshJnrVFaUcX5O0YPHaM/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
