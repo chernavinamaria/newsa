@@ -27,7 +27,8 @@ export default function PaymentResult({ ok }) {
             <p className="text-base md:text-lg text-gray-600 font-medium leading-relaxed">
               Спасибо! Мы получили вашу оплату
               {amount && !isNaN(Number(amount)) ? <> на сумму <b>{Number(amount) / 100} ₽</b></> : null}.
-              В течение <b>24 часов</b> отправим на вашу почту коды доступа и инструкции.
+              Уже отправили подтверждение на вашу почту — и в течение <b>24 часов</b> пришлём
+              всё необходимое: коды доступа к тесту или согласование времени встречи.
             </p>
             {orderId && (
               <p className="text-xs font-bold uppercase tracking-widest text-gray-400">

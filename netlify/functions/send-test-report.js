@@ -169,9 +169,9 @@ function buildHtml(name, results) {
                         Официальный тест Gallup: 177 вопросов, ~45 минут. Получите полный отчёт по 34 талантам с выделенным топ-5 в PDF. Это ваша база — от неё дальше строится вся работа.
                       </p>
                       <p style="margin:0 0 14px 0; font-size:12px; line-height:1.6; color:rgba(255,255,255,0.55);">
-                        Как это работает: подаёте заявку → мы присылаем ссылку на оплату → после оплаты приходят коды доступа на платформу Gallup → проходите тест → отчёт на email.
+                        Как это работает: оплачиваете картой прямо на сайте → в течение 24 часов присылаем коды доступа на платформу Gallup → проходите тест → отчёт на email.
                       </p>
-                      <a href="https://strengthsacademy.ru/#products" style="display:block; padding:16px 24px; background:#AECD65; color:#004452; text-decoration:none; border-radius:14px; font-weight:900; font-size:13px; letter-spacing:2px; text-transform:uppercase; text-align:center;">
+                      <a href="https://www.strengthsacademy.ru/#products" style="display:block; padding:16px 24px; background:#AECD65; color:#004452; text-decoration:none; border-radius:14px; font-weight:900; font-size:13px; letter-spacing:2px; text-transform:uppercase; text-align:center;">
                         Пройти тест Gallup
                       </a>
                     </div>
@@ -190,7 +190,7 @@ function buildHtml(name, results) {
                         <li>Ответы на конкретные вопросы (карьера, команда, роль)</li>
                         <li>3 месяца поддержки в Telegram</li>
                       </ul>
-                      <a href="https://strengthsacademy.ru/#cta" style="display:block; padding:16px 24px; background:#fff1ad; color:#004452; text-decoration:none; border-radius:14px; font-weight:900; font-size:13px; letter-spacing:2px; text-transform:uppercase; text-align:center;">
+                      <a href="https://www.strengthsacademy.ru/#cta" style="display:block; padding:16px 24px; background:#fff1ad; color:#004452; text-decoration:none; border-radius:14px; font-weight:900; font-size:13px; letter-spacing:2px; text-transform:uppercase; text-align:center;">
                         Записаться на встречу
                       </a>
                       <p style="margin:10px 0 0 0; font-size:11px; text-align:center; color:rgba(255,255,255,0.5); font-weight:700; letter-spacing:1px;">

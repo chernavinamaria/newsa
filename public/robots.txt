@@ -1,4 +1,7 @@
 User-agent: *
+Disallow: /admin
+Disallow: /payment-success
+Disallow: /payment-fail
 Allow: /
 
-Sitemap: https://strengthsacademy.ru/sitemap.xml
+Sitemap: https://www.strengthsacademy.ru/sitemap.xml

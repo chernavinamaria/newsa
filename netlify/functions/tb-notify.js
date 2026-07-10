@@ -51,10 +51,14 @@ export const handler = async (event) => {
     connectLambda(event);
     const store = getStore('sa-payments');
     const info = await store.get(n.OrderId, { type: 'json' });
-    if (info) data = { Name: info.name, Email: info.email, Phone: info.phone };
+    if (info) data = { Name: info.name, Email: info.email, Phone: info.phone, Product: info.product };
   } catch (e) {
     console.error('Blob lookup failed:', e.message);
   }
+
+  // «Старт» = самостоятельный продукт, клиенту нужны коды Gallup.
+  // Остальное (консультации, коучинг, профориентация) = живая сессия, нужно согласовать время.
+  const isSelfServe = data.Product === 'Старт с сильных сторон';
 
   if (n.Status === 'CONFIRMED') {
     await Promise.allSettled([
@@ -62,6 +66,7 @@ export const handler = async (event) => {
         [
           `✅ <b>ОПЛАТА ПОЛУЧЕНА</b>`,
           ``,
+          data.Product && `<b>Продукт:</b> ${escapeHtml(data.Product)}`,
           `<b>Сумма:</b> ${amountRub} ₽`,
           `<b>Заказ:</b> <code>${escapeHtml(n.OrderId || '')}</code>`,
           data.Name && `<b>Имя:</b> ${escapeHtml(data.Name)}`,
@@ -69,7 +74,9 @@ export const handler = async (event) => {
           data.Phone && `<b>Телефон:</b> ${escapeHtml(data.Phone)}`,
           n.Pan && `<b>Карта:</b> ${escapeHtml(n.Pan)}`,
           ``,
-          `👉 Не забудь купить код Gallup и отправить клиенту в течение 24ч`
+          isSelfServe
+            ? `👉 Не забудь купить код Gallup и отправить клиенту в течение 24ч`
+            : `👉 Свяжись с клиентом в течение 24ч — согласовать время сессии`
         ].filter(Boolean).join('\n')
       ),
       fetch(CRM_URL, {
@@ -83,7 +90,7 @@ export const handler = async (event) => {
         }),
         redirect: 'follow'
       }),
-      data.Email ? sendConfirmationEmail(data.Email, data.Name, amountRub, n.OrderId) : Promise.resolve()
+      data.Email ? sendConfirmationEmail(data.Email, data.Name, amountRub, n.OrderId, isSelfServe, data.Product) : Promise.resolve()
     ]);
   } else if (['REJECTED', 'REFUNDED', 'PARTIAL_REFUNDED', 'DEADLINE_EXPIRED'].includes(n.Status)) {
     await notifyTelegram(
@@ -95,10 +102,13 @@ export const handler = async (event) => {
   return { statusCode: 200, body: 'OK' };
 };
 
-async function sendConfirmationEmail(email, name, amountRub, orderId) {
+async function sendConfirmationEmail(email, name, amountRub, orderId, isSelfServe, product) {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.FROM_EMAIL;
   if (!key || !from) return;
+  const nextSteps = isSelfServe
+    ? `В течение <b>24 часов</b> мы отправим на эту почту коды доступа и инструкции по прохождению теста Gallup CliftonStrengths.`
+    : `В течение <b>24 часов</b> мы свяжемся с вами, чтобы согласовать удобное время и рассказать о следующих шагах.`;
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -109,8 +119,8 @@ async function sendConfirmationEmail(email, name, amountRub, orderId) {
       html: `
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a1a2e">
           <h2 style="text-transform:uppercase;font-style:italic">Спасибо за оплату!</h2>
-          <p>${name ? escapeHtml(name) + ', мы' : 'Мы'} получили вашу оплату на сумму <b>${amountRub} ₽</b> (заказ <b>${escapeHtml(orderId || '')}</b>).</p>
-          <p>В течение <b>24 часов</b> мы отправим на эту почту коды доступа и инструкции по прохождению теста Gallup CliftonStrengths.</p>
+          <p>${name ? escapeHtml(name) + ', мы' : 'Мы'} получили вашу оплату${product ? ` за «<b>${escapeHtml(product)}</b>»` : ''} на сумму <b>${amountRub} ₽</b> (заказ <b>${escapeHtml(orderId || '')}</b>).</p>
+          <p>${nextSteps}</p>
           <p>Если есть вопросы — пишите в Telegram: <a href="https://t.me/strengthsacademy_bot">@strengthsacademy_bot</a></p>
           <p style="color:#888;font-size:12px;margin-top:32px">Strengths Academy · <a href="https://www.strengthsacademy.ru" style="color:#888">strengthsacademy.ru</a></p>
         </div>`
