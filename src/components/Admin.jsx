@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CRM_URL, BACKEND_URL } from '../config';
-import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare, Send, KeyRound } from 'lucide-react';
+import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare, Send, KeyRound, Building2, Inbox } from 'lucide-react';
+import AdminB2B from './AdminB2B';
 
 const STATUSES = ['Новая', 'В работе', 'Ожидает оплаты', 'Оплачено', 'Закрыто', 'Отказ'];
 const STATUS_COLORS = {
@@ -34,6 +35,7 @@ function apiPost(body) {
 export default function Admin() {
   const [password, setPassword] = useState(localStorage.getItem(STORAGE_KEY) || '');
   const [loggedIn, setLoggedIn] = useState(false);
+  const [view, setView] = useState('leads'); // leads | b2b
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -223,9 +225,25 @@ export default function Admin() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { loadLeads(); loadStats(); }} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
+            <div className="flex p-1 bg-white/10 rounded-xl mr-1">
+              <button
+                onClick={() => setView('leads')}
+                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${view === 'leads' ? 'bg-brand-yellow text-brand-dark' : 'text-white/70 hover:text-white'}`}
+              >
+                <Inbox size={13} /> Заявки
+              </button>
+              <button
+                onClick={() => setView('b2b')}
+                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${view === 'b2b' ? 'bg-brand-yellow text-brand-dark' : 'text-white/70 hover:text-white'}`}
+              >
+                <Building2 size={13} /> B2B
+              </button>
+            </div>
+            {view === 'leads' && (
+              <button onClick={() => { loadLeads(); loadStats(); }} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              </button>
+            )}
             <button onClick={logout} className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
               <LogOut size={14} /> Выйти
             </button>
@@ -234,6 +252,10 @@ export default function Admin() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10">
+        {view === 'b2b' ? (
+          <AdminB2B password={password} />
+        ) : (
+        <>
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
@@ -309,6 +331,8 @@ export default function Admin() {
             </div>
           ))}
         </div>
+        </>
+        )}
       </div>
 
       {/* Details modal */}

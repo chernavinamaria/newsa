@@ -31,7 +31,7 @@ export const handler = async (event) => {
     return { statusCode: 400, headers: CORS, body: 'Invalid JSON' };
   }
 
-  const { password, email, name, codes } = payload;
+  const { password, email, name, codes, deadline } = payload;
 
   // Авторизация: только тот, кто знает пароль админки
   try {
@@ -51,7 +51,7 @@ export const handler = async (event) => {
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Не указан ни один код' }) };
   }
 
-  const html = buildCodesHtml(name, codeList);
+  const html = buildCodesHtml(name, codeList, deadline);
 
   try {
     const resp = await fetch('https://api.resend.com/emails', {
@@ -75,13 +75,23 @@ export const handler = async (event) => {
   }
 };
 
-function buildCodesHtml(name, codeList) {
+function buildCodesHtml(name, codeList, deadline) {
   const safeName = escapeHtml(String(name || '').trim());
-  const greeting = safeName ? `Здравствуйте, <b>${safeName}</b>!` : 'Здравствуйте!';
+  const greeting = safeName ? `Добрый день, <b>${safeName}</b>!` : 'Добрый день!';
   const codesBlock = codeList.map(c => `
     <div style="background:#004452; color:#fff1ad; font-family:'Courier New',monospace; font-size:20px; font-weight:bold; letter-spacing:2px; text-align:center; padding:18px 16px; border-radius:14px; margin-bottom:10px;">
       ${escapeHtml(c)}
     </div>`).join('');
+  const deadlineBlock = deadline ? `
+            <div style="background:#fff1ad; border-radius:14px; padding:14px 20px; margin:0 0 20px 0; text-align:center;">
+              <span style="font-size:14px; font-weight:900; color:#004452;">⏰ Просим пройти тестирование до ${escapeHtml(String(deadline))}</span>
+            </div>` : '';
+
+  const stepTitle = (n, t) => `
+              <div style="margin:0 0 10px 0;">
+                <span style="display:inline-block; width:28px; height:28px; line-height:28px; background:#004452; color:#fff1ad; border-radius:8px; text-align:center; font-weight:900; font-size:14px; margin-right:10px;">${n}</span>
+                <span style="font-size:14px; font-weight:900; letter-spacing:1px; text-transform:uppercase; color:#004452;">${t}</span>
+              </div>`;
 
   return `<!doctype html>
 <html lang="ru">
@@ -105,24 +115,42 @@ function buildCodesHtml(name, codeList) {
           <td style="padding:32px;">
             <p style="margin:0 0 16px 0; font-size:16px; line-height:1.6;">${greeting}</p>
             <p style="margin:0 0 20px 0; font-size:15px; color:#374151; line-height:1.7;">
-              Спасибо за покупку! Ниже — ${codeList.length > 1 ? 'ваши коды доступа' : 'ваш код доступа'} к официальному тесту <b>Gallup CliftonStrengths</b> (полный отчёт по 34 талантам).
+              Приглашаем вас пройти тестирование <b>CliftonStrengths от Gallup</b> — онлайн-инструмент, который помогает определить, понять и максимально использовать свои сильные стороны. ${codeList.length > 1 ? 'Ваши коды доступа' : 'Ваш код доступа'}:
             </p>
             ${codesBlock}
-            <div style="background:#f5f7f8; border-radius:16px; padding:20px 24px; margin:20px 0;">
-              <div style="font-size:11px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:#004452; opacity:0.6; margin-bottom:10px;">Как активировать</div>
-              <ol style="margin:0; padding-left:20px; font-size:14px; line-height:1.9; color:#374151;">
-                <li>Откройте <a href="https://www.gallup.com/access" style="color:#0a9396; font-weight:bold;">gallup.com/access</a></li>
-                <li>Нажмите <b>«Redeem Access Code»</b> (справа вверху)</li>
-                <li>Введите код из письма и создайте аккаунт</li>
-                <li>Пройдите тест: 177 вопросов, ~45 минут, не отвлекаясь (на каждый вопрос 20 секунд)</li>
-                <li>Отчёты по 34 талантам появятся в личном кабинете сразу после теста</li>
-              </ol>
+            ${deadlineBlock}
+
+            <div style="background:#f5f7f8; border-radius:16px; padding:20px 24px; margin:0 0 14px 0;">
+              ${stepTitle(1, 'Подготовка и регистрация')}
+              <ul style="margin:0; padding-left:20px; font-size:14px; line-height:1.9; color:#374151;">
+                <li>Выделите <b>45 минут</b>, чтобы пройти тест за один раз, в спокойной обстановке и без перерывов</li>
+                <li>Лучше проходить <b>с компьютера или ноутбука</b></li>
+                <li>⚠️ <b>Включите VPN</b> на устройстве — без него сайт Gallup из России может не открыться</li>
+                <li>Зайдите на <a href="https://www.gallup.com/access" style="color:#0a9396; font-weight:bold;">gallup.com/access</a> (Gallup Access)</li>
+                <li>Нажмите <b>Sign in</b> (справа вверху) и зарегистрируйте новую учётную запись. Страна — <b>Россия</b>, язык прохождения — <b>русский</b></li>
+              </ul>
             </div>
-            <p style="margin:0 0 8px 0; font-size:14px; color:#374151; line-height:1.7;">
-              <b>Совет:</b> проходите тест на языке, на котором думаете — есть русский. Отвечайте первое, что приходит в голову: тест меряет естественные реакции.
-            </p>
-            <p style="margin:16px 0 0 0; font-size:14px; color:#374151; line-height:1.7;">
-              Возникли сложности с активацией или вопросы по отчёту — просто ответьте на это письмо или напишите в Telegram: <a href="https://t.me/strengthsacademy_bot" style="color:#0a9396; font-weight:bold;">@strengthsacademy_bot</a>
+
+            <div style="background:#f5f7f8; border-radius:16px; padding:20px 24px; margin:0 0 14px 0;">
+              ${stepTitle(2, 'Активация кода и прохождение теста')}
+              <ul style="margin:0; padding-left:20px; font-size:14px; line-height:1.9; color:#374151;">
+                <li>В верхнем левом углу откройте <b>Меню</b> (три горизонтальные чёрточки)</li>
+                <li>Нажмите <b>«Активировать код доступа»</b> (Redeem Access Code)</li>
+                <li>Скопируйте код из этого письма, вставьте и нажмите <b>«Продолжить»</b></li>
+                <li>Пройдите тест: 177 вопросов, на каждый даётся 20 секунд — отвечайте первое, что приходит в голову, тест меряет естественные реакции</li>
+              </ul>
+            </div>
+
+            <div style="background:#f5f7f8; border-radius:16px; padding:20px 24px; margin:0 0 20px 0;">
+              ${stepTitle(3, 'Ваш отчёт')}
+              <ul style="margin:0; padding-left:20px; font-size:14px; line-height:1.9; color:#374151;">
+                <li>Через ~10 минут после завершения отчёт появится в личном кабинете Gallup</li>
+                <li>Его можно скачать на компьютер (PDF) — он понадобится для работы с коучем</li>
+              </ul>
+            </div>
+
+            <p style="margin:0; font-size:14px; color:#374151; line-height:1.7;">
+              Если возникнут проблемы или потребуется помощь — просто ответьте на это письмо, напишите на <a href="mailto:strengthsacademy.ru@gmail.com" style="color:#0a9396; font-weight:bold;">strengthsacademy.ru@gmail.com</a> или в Telegram: <a href="https://t.me/strengthsacademy_bot" style="color:#0a9396; font-weight:bold;">@strengthsacademy_bot</a>
             </p>
           </td>
         </tr>

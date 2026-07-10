@@ -109,8 +109,9 @@ async function sendConfirmationEmail(email, name, amountRub, orderId, isSelfServ
   const from = process.env.FROM_EMAIL;
   if (!key || !from) return;
   const nextSteps = isSelfServe
-    ? `В течение <b>24 часов</b> мы отправим на эту почту коды доступа и инструкции по прохождению теста Gallup CliftonStrengths.`
+    ? `В течение <b>24 часов</b> мы отправим на эту почту коды доступа и подробную инструкцию по прохождению теста Gallup CliftonStrengths.`
     : `В течение <b>24 часов</b> мы свяжемся с вами, чтобы согласовать удобное время и рассказать о следующих шагах.`;
+  const safeName = escapeHtml(String(name || '').trim());
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -118,14 +119,57 @@ async function sendConfirmationEmail(email, name, amountRub, orderId, isSelfServ
       from,
       to: [email],
       subject: 'Оплата получена — Strengths Academy',
-      html: `
-        <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a1a2e">
-          <h2 style="text-transform:uppercase;font-style:italic">Спасибо за оплату!</h2>
-          <p>${name ? escapeHtml(name) + ', мы' : 'Мы'} получили вашу оплату${product ? ` за «<b>${escapeHtml(product)}</b>»` : ''} на сумму <b>${amountRub} ₽</b> (заказ <b>${escapeHtml(orderId || '')}</b>).</p>
-          <p>${nextSteps}</p>
-          <p>Если есть вопросы — пишите в Telegram: <a href="https://t.me/strengthsacademy_bot">@strengthsacademy_bot</a></p>
-          <p style="color:#888;font-size:12px;margin-top:32px">Strengths Academy · <a href="https://www.strengthsacademy.ru" style="color:#888">strengthsacademy.ru</a></p>
-        </div>`
+      html: `<!doctype html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Оплата получена</title></head>
+<body style="margin:0; padding:0; background:#f5f7f8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#004452;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7f8; padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px; width:100%; background:#ffffff; border-radius:24px; overflow:hidden; box-shadow:0 2px 24px rgba(0,68,82,0.08);">
+        <tr>
+          <td style="background:#004452; padding:32px; text-align:center;">
+            <div style="display:inline-block; width:44px; height:44px; line-height:44px; background:#fff1ad; color:#004452; border-radius:12px; font-weight:900; font-style:italic; font-size:18px; margin-bottom:16px;">SA</div>
+            <div style="font-size:13px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:#AECD65; margin-bottom:8px;">Платёж прошёл</div>
+            <div style="font-size:26px; font-weight:900; font-style:italic; text-transform:uppercase; letter-spacing:-1px; color:#ffffff; line-height:1.1;">
+              Спасибо за <span style="color:#fff1ad;">оплату!</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 16px 0; font-size:16px; line-height:1.6;">${safeName ? `Здравствуйте, <b>${safeName}</b>!` : 'Здравствуйте!'}</p>
+            <p style="margin:0 0 20px 0; font-size:15px; color:#374151; line-height:1.7;">
+              Мы получили вашу оплату${product ? ` за «<b>${escapeHtml(product)}</b>»` : ''} на сумму <b>${amountRub} ₽</b>.
+            </p>
+            <div style="background:#f5f7f8; border-radius:16px; padding:18px 24px; margin:0 0 20px 0;">
+              <div style="font-size:11px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:#004452; opacity:0.6; margin-bottom:6px;">Что дальше</div>
+              <p style="margin:0; font-size:15px; color:#374151; line-height:1.7;">${nextSteps}</p>
+            </div>
+            <p style="margin:0 0 4px 0; font-size:13px; color:#6b7280;">Номер заказа: <b>${escapeHtml(orderId || '')}</b></p>
+            <p style="margin:16px 0 0 0; font-size:14px; color:#374151; line-height:1.7;">
+              Вопросы — просто ответьте на это письмо или напишите в Telegram: <a href="https://t.me/strengthsacademy_bot" style="color:#0a9396; font-weight:bold;">@strengthsacademy_bot</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #e5e7eb;">
+              <tr><td style="padding-top:20px;">
+                <p style="margin:0 0 6px 0; font-size:13px; font-weight:700;">Strengths Academy</p>
+                <p style="margin:0; font-size:12px; color:#6b7280; line-height:1.6;">
+                  <a href="https://www.strengthsacademy.ru" style="color:#0a9396; text-decoration:none;">strengthsacademy.ru</a> ·
+                  Telegram: <a href="https://t.me/strengths_academy" style="color:#0a9396; text-decoration:none;">@strengths_academy</a>
+                </p>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      reply_to: 'strengthsacademy.ru@gmail.com'
     })
   });
 }
