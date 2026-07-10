@@ -54,9 +54,46 @@ export const handler = async (event) => {
     await send(TG_CHAT_ID,
       `💬 <b>${escapeHtml(userName)}</b> ${escapeHtml(username)}:\n\n` +
       `${escapeHtml(msg.text)}\n\n` +
-      `<i>Ответить: /reply_${msg.chat.id}</i>`
+      `<i>Чтобы ответить — сделайте свайп-ответ (reply) на это сообщение и напишите текст. Или командой: /reply_${msg.chat.id} текст</i>`
     );
     return { statusCode: 200, body: 'ok' };
+  }
+
+  // ===== Ответы владельца клиентам =====
+  if (isFromOwner && msg.text) {
+    let targetChatId = null;
+    let replyText = null;
+
+    // Способ 1: свайп-ответ на пересланное ботом сообщение — берём chat id из его текста
+    if (msg.reply_to_message?.text) {
+      const m = msg.reply_to_message.text.match(/\/reply_(\d+)|Chat ID: (\d+)/);
+      if (m) {
+        targetChatId = m[1] || m[2];
+        replyText = msg.text;
+      }
+    }
+
+    // Способ 2: команда /reply_123456789 текст ответа
+    if (!targetChatId) {
+      const m = msg.text.match(/^\/reply_(\d+)\s+([\s\S]+)/);
+      if (m) {
+        targetChatId = m[1];
+        replyText = m[2];
+      }
+    }
+
+    if (targetChatId && replyText) {
+      const resp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: targetChatId, text: replyText, disable_web_page_preview: true })
+      }).then(r => r.json()).catch(() => ({ ok: false }));
+
+      await send(TG_CHAT_ID, resp.ok
+        ? `✅ Доставлено клиенту (chat ${targetChatId})`
+        : `⚠️ Не удалось доставить (chat ${targetChatId}). Возможно, клиент заблокировал бота.`);
+      return { statusCode: 200, body: 'ok' };
+    }
   }
 
   return { statusCode: 200, body: 'ok' };
