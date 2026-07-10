@@ -18,7 +18,8 @@ const team = [
     role: 'Бизнес-тренер · Co-founder',
     bio: 'В HR более 13 лет. Фасилитатор, бизнес-тренер, методолог образовательных программ, эксперт в области развития сильных сторон.',
     strengths: ['Maximizer', 'Adaptability', 'Futuristic', 'Relator', 'Significance'],
-    image: evgeniaImg
+    image: evgeniaImg,
+    imgPos: '50% 50%' // лицо по центру кадра — сдвигаем вниз, чтобы плашка с именем не закрывала лицо
   },
   {
     name: 'Мария Чернавина',
@@ -89,7 +90,8 @@ export default function Team() {
                 <img
                   src={member.image}
                   alt={member.name}
-                  className="w-full h-full object-cover object-top grayscale brightness-90 transition-transform duration-700 group-hover:scale-105"
+                  style={{ objectPosition: member.imgPos || '50% 0%' }}
+                  className="w-full h-full object-cover grayscale brightness-90 transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
                 <div className="absolute bottom-6 md:bottom-10 left-6 md:left-10 right-6 md:right-10">
@@ -127,7 +129,7 @@ export default function Team() {
               </button>
 
               <div className="w-full md:w-80 h-64 md:h-auto shrink-0 relative bg-gray-100">
-                 <img src={activeMember.image} alt={activeMember.name} className="w-full h-full object-cover object-top grayscale brightness-90" />
+                 <img src={activeMember.image} alt={activeMember.name} style={{ objectPosition: activeMember.imgPos || '50% 0%' }} className="w-full h-full object-cover grayscale brightness-90" />
                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:hidden"></div>
                  <div className="absolute bottom-6 left-6 text-white md:hidden">
                     <p className="text-brand-yellow font-bold uppercase text-[10px] tracking-widest mb-1">{activeMember.role}</p>
