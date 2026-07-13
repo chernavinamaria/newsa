@@ -108,7 +108,12 @@ export default function Modal({ isOpen, onClose, product }) {
             </div>
           </motion.div>
 
-          <PaymentModal isOpen={payOpen} onClose={() => setPayOpen(false)} product={product} />
+          <PaymentModal
+            isOpen={payOpen}
+            onClose={() => setPayOpen(false)}
+            product={product}
+            onCloseAll={() => { setPayOpen(false); onClose(); }}
+          />
         </div>
       )}
     </AnimatePresence>

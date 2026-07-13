@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, Loader2, CreditCard } from 'lucide-react';
-import { BACKEND_URL } from '../config';
+import { X, Lock, Loader2, CreditCard, MessageCircle, Clock } from 'lucide-react';
+import { BACKEND_URL, PAYMENTS_ENABLED } from '../config';
 
-export default function PaymentModal({ isOpen, onClose, product }) {
+export default function PaymentModal({ isOpen, onClose, product, onCloseAll }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -75,7 +75,9 @@ export default function PaymentModal({ isOpen, onClose, product }) {
                 <div className="w-10 h-10 bg-brand-yellow rounded-xl flex items-center justify-center text-brand-dark shrink-0">
                   <CreditCard size={20} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Оплата картой онлайн</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {PAYMENTS_ENABLED ? 'Оплата картой онлайн' : 'Оплата'}
+                </span>
               </div>
 
               <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-brand-dark leading-none mb-1">
@@ -83,6 +85,43 @@ export default function PaymentModal({ isOpen, onClose, product }) {
               </h3>
               <div className="text-xl font-black text-brand-accent mb-6">{product.price}</div>
 
+              {!PAYMENTS_ENABLED ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-brand-light rounded-2xl">
+                    <Clock size={18} className="text-brand-accent shrink-0 mt-0.5" />
+                    <p className="text-sm text-gray-600 font-medium leading-relaxed">
+                      Онлайн-оплата на сайте появится совсем скоро — мы уже подключаем приём платежей.
+                    </p>
+                  </div>
+                  <p className="text-sm md:text-base text-gray-600 font-medium leading-relaxed">
+                    А пока просто напишите нам — быстро подскажем удобный способ оплаты
+                    и ответим на любые вопросы о программе.
+                  </p>
+                  <a
+                    href="https://t.me/strengthsacademy_bot?start=pay"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-3 px-8 py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-brand-accent transition-all shadow-xl"
+                  >
+                    <MessageCircle size={18} /> Написать в Telegram
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      (onCloseAll || onClose)();
+                      setTimeout(() => {
+                        document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 350);
+                    }}
+                    className="w-full px-8 py-5 bg-brand-light text-brand-dark rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-gray-200 transition-all"
+                  >
+                    Оставить заявку на сайте
+                  </button>
+                  <p className="text-[11px] text-gray-400 font-medium text-center">
+                    Обычно отвечаем в течение рабочего дня.
+                  </p>
+                </div>
+              ) : (
               <form onSubmit={handlePay} className="space-y-4">
                 <input
                   type="text"
@@ -128,6 +167,7 @@ export default function PaymentModal({ isOpen, onClose, product }) {
                   <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-privacy'))} className="underline hover:text-brand-dark">политику конфиденциальности</button>.
                 </p>
               </form>
+              )}
             </div>
           </motion.div>
         </div>
