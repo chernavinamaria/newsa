@@ -90,7 +90,9 @@ const shortHash = (s) => createHash('sha256').update(String(s)).digest('hex').sl
 // Подключение к Netlify Blobs. То же, что connectLambda из библиотеки, но дополнительно передаёт
 // адрес для чтения без кэша: с ним счётчик виден сразу после записи (consistency: strong).
 // Без него быстрые запросы подряд читали бы устаревшее значение и ограничение не срабатывало.
-function rateStore(event) {
+const rateStore = (event) => blobStore(event, 'sa-ratelimit');
+
+export function blobStore(event, name) {
   const data = JSON.parse(Buffer.from(event.blobs, 'base64').toString('utf8'));
   setEnvironmentContext({
     deployID: event.headers['x-nf-deploy-id'],
@@ -101,7 +103,7 @@ function rateStore(event) {
     token: data.token
   });
   if (!data.url_uncached) console.warn('blobs: no uncached url, fields:', Object.keys(data).join(','));
-  return getStore(data.url_uncached ? { name: 'sa-ratelimit', consistency: 'strong' } : 'sa-ratelimit');
+  return getStore(data.url_uncached ? { name, consistency: 'strong' } : name);
 }
 
 export async function tooMany(event, name, rules, { count = true } = {}) {

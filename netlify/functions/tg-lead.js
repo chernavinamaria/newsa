@@ -36,34 +36,51 @@ export const handler = async (event) => {
   if (!contact && !name) return json(event, 400, { error: 'Пустая заявка' });
 
   const fields = [
-    `<b>Форма:</b> ${escapeHtml(form || 'unknown')}`,
     name && `<b>Имя:</b> ${escapeHtml(name)}`,
     contact && `<b>Контакт:</b> ${escapeHtml(contact)}`,
-    path && `<b>Раздел:</b> ${escapeHtml(path)}`,
+    path && `<b>Откуда:</b> ${escapeHtml(path)}`,
     notes && `<b>Заметка:</b> ${escapeHtml(notes)}`,
     results && `<b>Результаты теста:</b> <code>${escapeHtml(results)}</code>`
   ].filter(Boolean);
 
+  // Подсказка, что делать с заявкой: владелец не должен гадать, можно ли ответить через бота
+  const isTest = /тест метапрограмм|metaprograms/i.test(form);
+  const hint = isTest
+    ? 'Что делать: ничего. Человек прошёл бесплатный тест, письмо с результатами отправляется ему автоматически. Контакт сохранён в CRM.'
+    : 'Что делать: связаться с человеком по контакту выше. Через бота ответить нельзя, заявка оставлена на сайте. Она уже в CRM: strengthsacademy.ru/admin';
+
   const lines = [
-    `🔔 <b>Новая заявка с сайта</b>`,
+    `🔔 <b>Заявка с сайта${form ? `: ${escapeHtml(form)}` : ''}</b>`,
     ``,
     ...fields,
     ``,
+    `<i>${hint}</i>`,
     `<i>${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК</i>`
   ].join('\n');
 
+  // Если оставлен телефон: кнопки, чтобы сразу открыть переписку с этим номером
+  const digits = contact.includes('@') ? '' : contact.replace(/\D/g, '');
+  const phone = digits.length === 11 && /^[78]/.test(digits) ? '7' + digits.slice(1) : digits.length === 10 ? '7' + digits : digits.length >= 11 && digits.length <= 15 ? digits : '';
+  const buttons = phone
+    ? { inline_keyboard: [[{ text: 'Написать в Telegram', url: `https://t.me/+${phone}` }, { text: 'Написать в WhatsApp', url: `https://wa.me/${phone}` }]] }
+    : null;
+
+  const post = (withButtons) => fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TG_CHAT_ID,
+      text: lines,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      ...(withButtons ? { reply_markup: buttons } : {})
+    })
+  }).then((r) => r.json());
+
   try {
-    const resp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TG_CHAT_ID,
-        text: lines,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true
-      })
-    });
-    const data = await resp.json();
+    let data = await post(Boolean(buttons));
+    // Кнопки не должны стоить заявки: если Telegram их не принял, шлём без них
+    if (!data.ok && buttons) data = await post(false);
     if (!data.ok) {
       console.error('Telegram API error:', JSON.stringify(data));
       return json(event, 502, { error: 'Не удалось отправить' });
