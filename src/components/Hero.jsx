@@ -42,13 +42,13 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="lg:hidden inline-flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-lg mb-6"
+              className="lg:hidden inline-flex items-center gap-2 min-[360px]:gap-3 px-3 min-[360px]:px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-lg mb-6"
             >
               <span className="text-2xl font-black italic leading-none text-brand-yellow">34</span>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none">Таланта · Методология Gallup</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.06em] min-[360px]:tracking-[0.2em] leading-none">Таланта · Методология Gallup</span>
             </motion.div>
 
-            <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white lg:text-brand-dark leading-[0.9] tracking-tighter uppercase italic mb-8 md:mb-10 drop-shadow-lg lg:drop-shadow-none">
+            <h1 className="text-[2.5rem] min-[360px]:text-5xl sm:text-7xl md:text-8xl font-black text-white lg:text-brand-dark leading-[0.9] tracking-tighter uppercase italic mb-8 md:mb-10 drop-shadow-lg lg:drop-shadow-none">
               Раскройте <br/>
               <span className="text-brand-yellow lg:text-brand-accent not-italic">Силу</span> <br/>
               Талантов

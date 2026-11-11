@@ -10,13 +10,25 @@ import CTASection from './components/CTASection'
 import Footer from './components/Footer'
 import FloatingCTA from './components/FloatingCTA'
 import TalentWheel from './components/TalentWheel'
+import Clients from './components/Clients'
 import Admin from './components/Admin'
 import PaymentResult from './components/PaymentResult'
+import Program from './components/Program'
+import Landing from './components/Landing'
+import { LANDINGS } from './seo/pages'
 
-function App() {
-  // Simple client-side routing: /admin → admin panel, /payment/* → payment result
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
-  if (path === '/admin' || path === '/admin/') {
+// Убираем хвостовой слэш: '/program/' → '/program', '/' остаётся '/'
+export function normalizePath(p) {
+  return (p || '/').replace(/\/+$/, '') || '/';
+}
+
+// `path` передаёт пререндер (scripts/prerender.mjs). В браузере берём из адреса.
+function App({ path: pathProp }) {
+  // Simple client-side routing: /admin → admin panel, /payment-* → payment result
+  const raw = pathProp ?? (typeof window !== 'undefined' ? window.location.pathname : '/');
+  const path = normalizePath(raw);
+
+  if (path === '/admin') {
     return <Admin />;
   }
   if (path.startsWith('/payment-success')) {
@@ -24,6 +36,14 @@ function App() {
   }
   if (path.startsWith('/payment-fail')) {
     return <PaymentResult ok={false} />;
+  }
+  // Все роуты ОДНОУРОВНЕВЫЕ — Selectel отдаёт страницы только для путей
+  // без вложенного слэша (см. CLAUDE.md, «Грабли»).
+  if (path === '/program') {
+    return <Program />;
+  }
+  if (LANDINGS[path]) {
+    return <Landing page={LANDINGS[path]} />;
   }
 
   return (
@@ -33,6 +53,7 @@ function App() {
       <WhyGallup />
       <Products />
       <TalentWheel />
+      <Clients />
       <Reviews />
       <Team />
       <News />

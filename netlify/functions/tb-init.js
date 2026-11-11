@@ -1,18 +1,13 @@
 // Netlify Function — создание платежа T-Business (T-Bank Merchant API v2, метод Init)
 // Requires env vars in Netlify: TB_TERMINAL_KEY, TB_PASSWORD (+ TG_BOT_TOKEN, TG_CHAT_ID для алертов)
 
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+import { precheck, parseBody, json, clean, isEmail, escapeHtml, tooMany } from '../lib/guard.js';
 
 const SITE_URL = 'https://www.strengthsacademy.ru';
 const BACKEND_URL = 'https://sa-api-backend.netlify.app/.netlify/functions';
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
 
 // Цены только на сервере — сумма с клиента не принимается (защита от подмены)
 const CATALOG = {
@@ -31,49 +26,41 @@ function tbToken(params, password) {
 }
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS, body: '' };
-  }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
-  }
+  const rejected = precheck(event);
+  if (rejected) return rejected;
 
   const TB_TERMINAL_KEY = process.env.TB_TERMINAL_KEY;
   const TB_PASSWORD = process.env.TB_PASSWORD;
-  if (!TB_TERMINAL_KEY || !TB_PASSWORD) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Payment not configured' }) };
+  if (!TB_TERMINAL_KEY || !TB_PASSWORD) return json(event, 500, { error: 'Payment not configured' });
+
+  const payload = parseBody(event);
+  if (!payload) return json(event, 400, { error: 'Invalid JSON' });
+
+  const productId = clean(payload.productId, 40);
+  const name = clean(payload.name, 100);
+  const email = clean(payload.email, 100);
+  const phone = clean(payload.phone, 30);
+  const product = Object.prototype.hasOwnProperty.call(CATALOG, productId) ? CATALOG[productId] : null;
+  if (!product) return json(event, 400, { error: 'Unknown product' });
+  if (!isEmail(email)) return json(event, 400, { error: 'Invalid email' });
+
+  // Каждый созданный платёж уходит в банк, в Telegram и в CRM, поэтому ограничиваем частоту:
+  // с одного адреса 6 за 10 минут, всего 40 в час.
+  if (await tooMany(event, 'tb-init', [
+    { by: 'ip', limit: 6, windowSec: 600 },
+    { by: 'all', limit: 40, windowSec: 3600 }
+  ])) {
+    return json(event, 429, { error: 'Слишком много попыток оплаты. Попробуйте через несколько минут или напишите нам.' });
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || '{}');
-  } catch {
-    return { statusCode: 400, headers: CORS, body: 'Invalid JSON' };
-  }
-
-  const { productId, name, email, phone } = payload;
-  const product = CATALOG[productId];
-  if (!product) {
-    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Unknown product' }) };
-  }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Invalid email' }) };
-  }
-
-  const orderId = `SA-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const orderId = `SA-${Date.now()}-${randomBytes(4).toString('hex')}`;
 
   // T-Bank НЕ возвращает DATA в нотификациях — сохраняем контакт клиента сами,
   // чтобы при подтверждении оплаты знать, кому слать коды и письмо.
   try {
     connectLambda(event);
     const store = getStore('sa-payments');
-    await store.setJSON(orderId, {
-      name: String(name || '').slice(0, 100),
-      email: String(email).slice(0, 100),
-      phone: String(phone || '').slice(0, 30),
-      product: product.title,
-      amount: product.amount
-    });
+    await store.setJSON(orderId, { name, email, phone, product: product.title, amount: product.amount });
   } catch (e) {
     console.error('Blob store failed (payment continues):', e.message);
   }
@@ -91,34 +78,48 @@ export const handler = async (event) => {
   const body = {
     ...params,
     Token: tbToken(params, TB_PASSWORD),
-    DATA: {
-      Name: String(name || '').slice(0, 100),
-      Email: String(email).slice(0, 100),
-      Phone: String(phone || '').slice(0, 30)
-    }
-    // TODO при переходе на боевой терминал: если включена онлайн-касса (54-ФЗ),
-    // добавить Receipt { Email, Taxation: 'usn_income', Items: [...] }
+    DATA: { Name: name, Email: email, Phone: phone }
   };
+
+  // Чек по 54-ФЗ. Включается переменной TB_TAXATION в Netlify (например usn_income).
+  // Пока она не задана — терминал демо, кассы нет, Receipt не отправляем.
+  // Receipt, как и DATA, вложенный объект и в расчёте Token не участвует.
+  if (process.env.TB_TAXATION) {
+    body.Receipt = {
+      Email: email,
+      Taxation: process.env.TB_TAXATION,
+      Items: [
+        {
+          Name: product.title.slice(0, 128),
+          Price: product.amount,
+          Quantity: 1,
+          Amount: product.amount,
+          // На УСН НДС не начисляется
+          Tax: process.env.TB_VAT || 'none',
+          PaymentMethod: 'full_prepayment',
+          PaymentObject: 'service'
+        }
+      ]
+    };
+    if (phone) body.Receipt.Phone = phone;
+  }
 
   let tb;
   try {
-    const resp = await fetch('https://securepay.tinkoff.ru/v2/Init', {
+    const resp = await fetch('https://securepay.tbank.ru/v2/Init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     tb = await resp.json();
   } catch (e) {
-    return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: 'T-Bank unreachable', details: e.message }) };
+    console.error('TB Init unreachable:', e.message);
+    return json(event, 502, { error: 'Банк временно недоступен. Попробуйте позже.' });
   }
 
   if (!tb.Success || !tb.PaymentURL) {
     console.error('TB Init failed:', JSON.stringify(tb));
-    return {
-      statusCode: 502,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: tb.Message || 'Init failed', details: tb.Details || '' })
-    };
+    return json(event, 502, { error: 'Не удалось создать платёж. Попробуйте позже или напишите нам.' });
   }
 
   // Алерт в Telegram + запись в CRM (не блокируют ответ при ошибке)
@@ -140,7 +141,9 @@ export const handler = async (event) => {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         type: 'payment_init',
-        name: name || '',
+        // Строки об оплате CRM принимает только с этим ключом (с сайта их подделать нельзя)
+        key: process.env.CRM_SERVICE_KEY || '',
+        name,
         // ВАЖНО: CRM принимает contact = ТОЛЬКО чистый email или телефон (не "email / телефон")
         contact: email,
         source: `${product.title} · ${product.amount / 100} ₽ · ${orderId}`,
@@ -150,11 +153,7 @@ export const handler = async (event) => {
     })
   ]);
 
-  return {
-    statusCode: 200,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ok: true, paymentUrl: tb.PaymentURL, orderId })
-  };
+  return json(event, 200, { ok: true, paymentUrl: tb.PaymentURL, orderId });
 };
 
 async function notifyTelegram(text) {
@@ -166,8 +165,4 @@ async function notifyTelegram(text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true })
   });
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 }

@@ -17,7 +17,9 @@ const results = [
 
 export default function WhyGallup() {
   return (
-    <section id="methodology" className="relative bg-white selection:bg-brand-yellow selection:text-brand-dark">
+    // overflow-x-clip: карточки справа до появления сдвинуты на 20px (анимация въезда)
+    // и на телефонах расширяли страницу, появлялась горизонтальная прокрутка.
+    <section id="methodology" className="relative bg-white overflow-x-clip selection:bg-brand-yellow selection:text-brand-dark">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 py-14 md:py-24">
         {/* Why Gallup Section */}
         <div className="grid lg:grid-cols-2 gap-10 md:gap-20 items-center mb-20 md:mb-40">
@@ -76,7 +78,7 @@ export default function WhyGallup() {
                 <ShieldCheck className="text-brand-yellow" size={32} />
                 <span className="text-xs font-black uppercase tracking-[0.4em] text-brand-yellow italic">Certified Experience</span>
               </div>
-              <h2 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">Наш опыт <br/> и экспертиза</h2>
+              <h2 className="text-4xl min-[360px]:text-[2.5rem] min-[420px]:text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">Наш опыт <br/> и экспертиза</h2>
            </div>
            
            <div className="grid md:grid-cols-3 gap-12">
@@ -93,10 +95,12 @@ export default function WhyGallup() {
                    {idx + 1}
                  </div>
                  <div className="relative z-10">
-                   <div className={`text-7xl md:text-9xl font-black mb-4 tracking-tighter transition-all group-hover:translate-x-4 ${stat.color} drop-shadow-2xl`}>
+                   {/* На планшетах и небольших ноутбуках три колонки узкие: крупная цифра
+                       наезжала на соседнюю, поэтому размер растёт ступенями. */}
+                   <div className={`text-7xl md:text-6xl lg:text-7xl xl:text-9xl font-black mb-4 tracking-tighter transition-all group-hover:translate-x-4 ${stat.color} drop-shadow-2xl`}>
                      {stat.value}
                    </div>
-                   <div className="text-sm font-black uppercase tracking-[0.3em] text-white/40 group-hover:text-white transition-colors pl-2">
+                   <div className="text-sm font-black uppercase tracking-[0.3em] md:tracking-[0.15em] lg:tracking-[0.3em] text-white/40 group-hover:text-white transition-colors pl-2">
                      {stat.label}
                    </div>
                  </div>

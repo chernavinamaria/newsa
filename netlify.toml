@@ -1,0 +1,9 @@
+# Сайт sa-api-backend на Netlify нужен только ради функций (netlify/functions).
+# Сама статика сайта живёт на Selectel, поэтому сюда публикуется страница-заглушка:
+# иначе на адресе sa-api-backend.netlify.app лежала бы вторая копия сайта.
+[build]
+  publish = "backend-public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"

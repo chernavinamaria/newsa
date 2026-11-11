@@ -2,54 +2,58 @@
 // Защита: пароль админки проверяется через CRM (admin_verify) — единый источник истины.
 // Env vars: RESEND_API_KEY, FROM_EMAIL
 
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
+import { precheck, parseBody, json, clean, isEmail, tooMany } from '../lib/guard.js';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
+
+// Неверные пароли считаем: 10 ошибок с одного адреса за 15 минут или 40 со всех адресов,
+// после этого функция перестаёт проверять пароль до конца окна (защита от подбора).
+const FAIL_RULES = [
+  { by: 'ip', limit: 10, windowSec: 900 },
+  { by: 'all', limit: 40, windowSec: 900 }
+];
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS, body: '' };
-  }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
-  }
+  const rejected = precheck(event);
+  if (rejected) return rejected;
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const FROM_EMAIL = process.env.FROM_EMAIL || 'Strengths Academy <hello@strengthsacademy.ru>';
-  if (!RESEND_API_KEY) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Not configured' }) };
+  if (!RESEND_API_KEY) return json(event, 500, { error: 'Not configured' });
+
+  const payload = parseBody(event);
+  if (!payload) return json(event, 400, { error: 'Invalid JSON' });
+
+  const password = typeof payload.password === 'string' ? payload.password.slice(0, 200) : '';
+  const email = clean(payload.email, 254);
+  const name = clean(payload.name, 100);
+  const deadline = clean(payload.deadline, 60);
+
+  if (!password) return json(event, 403, { error: 'Неверный пароль админки' });
+  if (await tooMany(event, 'send-codes-fail', FAIL_RULES, { count: false })) {
+    return json(event, 429, { error: 'Слишком много неверных попыток. Подождите 15 минут.' });
   }
 
-  let payload;
+  // Авторизация: только тот, кто знает пароль админки. Пароль уходит в CRM в теле POST,
+  // а не в адресной строке, чтобы не оставаться в журналах.
   try {
-    payload = JSON.parse(event.body || '{}');
-  } catch {
-    return { statusCode: 400, headers: CORS, body: 'Invalid JSON' };
-  }
-
-  const { password, email, name, codes, deadline } = payload;
-
-  // Авторизация: только тот, кто знает пароль админки
-  try {
-    const verify = await fetch(`${CRM_URL}?action=admin_verify&password=${encodeURIComponent(password || '')}`, { redirect: 'follow' }).then(r => r.json());
+    const verify = await fetch(CRM_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'admin_verify', password }),
+      redirect: 'follow'
+    }).then((r) => r.json());
     if (!verify.success) {
-      return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Неверный пароль админки' }) };
+      await tooMany(event, 'send-codes-fail', FAIL_RULES);
+      return json(event, 403, { error: verify.locked ? verify.error : 'Неверный пароль админки' });
     }
   } catch {
-    return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: 'CRM недоступна для проверки пароля' }) };
+    return json(event, 502, { error: 'CRM недоступна для проверки пароля' });
   }
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Некорректный email' }) };
-  }
-  const codeList = String(codes || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 10);
-  if (codeList.length === 0) {
-    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Не указан ни один код' }) };
-  }
+  if (!isEmail(email)) return json(event, 400, { error: 'Некорректный email' });
+  const codeList = String(payload.codes || '').split(/\r?\n/).map((c) => clean(c, 60)).filter(Boolean).slice(0, 10);
+  if (codeList.length === 0) return json(event, 400, { error: 'Не указан ни один код' });
 
   const html = buildCodesHtml(name, codeList, deadline);
 
@@ -65,13 +69,15 @@ export const handler = async (event) => {
         reply_to: 'strengthsacademy.ru@gmail.com'
       })
     });
-    const data = await resp.json();
+    const data = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: 'Resend error', details: data }) };
+      console.error('Resend error:', JSON.stringify(data));
+      return json(event, 502, { error: 'Почтовый сервис не принял письмо. Проверьте адрес и попробуйте ещё раз.' });
     }
-    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, id: data.id, sent: codeList.length }) };
+    return json(event, 200, { ok: true, id: data.id, sent: codeList.length });
   } catch (e) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
+    console.error('send-codes failed:', e.message);
+    return json(event, 500, { error: 'Не удалось отправить письмо' });
   }
 };
 

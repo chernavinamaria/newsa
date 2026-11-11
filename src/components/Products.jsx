@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpRight, Target, Flame, Sparkles, Users, User } from 'lucide-react';
+import { ArrowUpRight, Target, Flame, Sparkles, Users, User, Clock } from 'lucide-react';
 import Modal from './Modal';
 import Test from './Test';
 
-const programs = [
+export const programs = [
   // ============ B2C: Для физ. лиц ============
   {
     segment: 'b2c',
@@ -52,25 +52,26 @@ const programs = [
     color: 'bg-brand-dark'
   },
   {
+    // Карточка ведёт на отдельный лендинг /program, а не открывает модалку
     segment: 'b2c',
-    hidden: true,
-    title: 'Лидерство на основе сильных сторон',
-    audience: 'Онлайн программа',
-    duration: '4 модуля × 2 часа',
-    price: 'от 4 000 ₽',
-    badge: 'Доступно',
-    purpose: 'Онлайн-программа из 4 модулей по воскресеньям с межмодульной работой и сертификатом по завершении.',
+    link: '/program',
+    title: 'Сильные стороны: от таланта к мастерству',
+    audience: 'Онлайн-программа',
+    duration: '8 модулей × 2 часа',
+    price: 'от 4 500 ₽',
+    comingSoon: true,
+    purpose: 'Восемь недель по методологии Gallup: от знакомства со своими талантами до личного плана развития на 90 дней. Каждую субботу онлайн, ведёт Евгения Кудрявцева.',
     points: [
-      'Тестирование Gallup',
-      '4 онлайн-модуля по 2 часа',
-      'Базовый план действий',
-      'Сертификат по завершении',
-      'Доступ к базе знаний Gallup'
+      '8 живых встреч по 2 часа',
+      'Рабочая тетрадь и дневник наблюдений',
+      'Тест CliftonStrengths 34 на тарифах выше базового',
+      'Индивидуальные коуч-сессии на премиум-тарифе',
+      'Сертификат по завершении'
     ],
     mechanics: [
-      { num: '01', title: 'Тестирование', desc: 'Прохождение CliftonStrengths до старта.' },
-      { num: '02', title: '4 онлайн-модуля', desc: 'По воскресеньям, 2 часа с межмодульной работой.' },
-      { num: '03', title: 'План действий и сертификат', desc: 'Базовый план развития и сертификат по завершении.' }
+      { num: '01', title: 'Восемь суббот', desc: 'Живые встречи по 2 часа с практикой в парах и группах.' },
+      { num: '02', title: 'Практика между модулями', desc: 'Задания, дневник наблюдений и короткие уроки.' },
+      { num: '03', title: 'Личный план на 90 дней', desc: 'Сборка стратегии применения сильных сторон.' }
     ],
     color: 'bg-brand-green'
   },
@@ -121,6 +122,7 @@ const programs = [
     audience: 'Для семей',
     duration: 'Выездная программа',
     price: 'По запросу',
+    comingSoon: true,
     purpose: 'Выездные лагеря с программой развития сильных сторон, спортом и SPA.',
     points: [
       'Авторская программа развития',
@@ -279,6 +281,11 @@ export default function Products() {
   }, []);
 
   const handleOpenProduct = (program, index) => {
+    // У программ с собственным лендингом модалки нет — уходим на отдельную страницу
+    if (program.link) {
+      window.location.href = program.link;
+      return;
+    }
     window.history.pushState({ program: index }, '', `#program-${index}`);
     setSelectedProduct(program);
   };
@@ -379,7 +386,7 @@ export default function Products() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10"
+            className="grid sm:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10"
           >
             {filtered.map((program) => (
               <motion.div
@@ -392,7 +399,11 @@ export default function Products() {
                     : 'bg-white text-brand-dark border-gray-100 hover:border-brand-accent/30 hover:shadow-2xl'
                 }`}
               >
-                {program.badge && (
+                {program.comingSoon ? (
+                  <div className="absolute -top-3 left-6 md:left-8 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md bg-gray-200 text-gray-500">
+                    <Clock size={11} /> Скоро
+                  </div>
+                ) : program.badge && (
                   <div className={`absolute -top-3 left-6 md:left-8 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md ${
                     program.isFlagship ? 'bg-brand-yellow text-brand-dark' : 'bg-brand-accent text-white'
                   }`}>
@@ -409,7 +420,9 @@ export default function Products() {
                   </span>
                 </div>
 
-                <h3 className="text-2xl md:text-[1.7rem] font-black uppercase italic tracking-tighter mb-4 md:mb-5 leading-[0.95]">
+                {/* Размер подобран под самое длинное слово («КОНСУЛЬТИРОВАНИЕ»): раньше оно
+                    вылезало за карточку на планшетах и ноутбуках шириной до 1280px. */}
+                <h3 className="text-xl min-[360px]:text-[1.375rem] min-[380px]:text-2xl sm:text-xl md:text-[1.375rem] lg:text-[1.7rem] font-black uppercase italic tracking-tighter mb-4 md:mb-5 leading-[0.95]">
                   {program.title}
                 </h3>
 
@@ -428,11 +441,13 @@ export default function Products() {
                       </span>
                     </div>
                     <div className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-black uppercase tracking-widest text-[10px] transition-all group-hover:gap-3 ${
-                      program.isFlagship
+                      program.comingSoon
+                        ? 'bg-gray-100 text-gray-400'
+                        : program.isFlagship
                         ? 'bg-brand-yellow text-brand-dark'
                         : 'bg-brand-dark text-white group-hover:bg-brand-accent'
                     }`}>
-                      Подробнее <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      {program.comingSoon ? 'Скоро' : program.link ? 'Смотреть программу' : 'Подробнее'} <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </div>
                   </div>
                 </div>

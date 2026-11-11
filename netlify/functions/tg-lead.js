@@ -1,51 +1,56 @@
 // Netlify Function — forwards form submissions to Telegram bot
 // Requires env vars in Netlify: TG_BOT_TOKEN, TG_CHAT_ID
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+import { precheck, parseBody, json, clean, escapeHtml, tooMany } from '../lib/guard.js';
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS, body: '' };
-  }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
-  }
+  const rejected = precheck(event);
+  if (rejected) return rejected;
 
   const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
   const TG_CHAT_ID = process.env.TG_CHAT_ID;
+  if (!TG_BOT_TOKEN || !TG_CHAT_ID) return json(event, 500, { error: 'Not configured' });
 
-  if (!TG_BOT_TOKEN || !TG_CHAT_ID) {
-    return {
-      statusCode: 500,
-      headers: CORS,
-      body: JSON.stringify({ error: 'Bot not configured — missing TG_BOT_TOKEN or TG_CHAT_ID' })
-    };
+  const payload = parseBody(event);
+  if (!payload) return json(event, 400, { error: 'Invalid JSON' });
+
+  // С одного адреса: 8 заявок за 10 минут. Всего: 80 в час (защита от спама в чат).
+  if (await tooMany(event, 'tg-lead', [
+    { by: 'ip', limit: 8, windowSec: 600 },
+    { by: 'all', limit: 80, windowSec: 3600 }
+  ])) {
+    return json(event, 429, { error: 'Слишком много запросов. Попробуйте позже.' });
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || '{}');
-  } catch {
-    return { statusCode: 400, headers: CORS, body: 'Invalid JSON' };
-  }
+  // Все поля — одной строкой и ограниченной длины: в сообщение нельзя подставить
+  // переносы и «нарисовать» поддельное уведомление (например, об оплате).
+  const form = clean(payload.form, 40);
+  const name = clean(payload.name, 100);
+  const contact = clean(payload.email || payload.contact, 254);
+  const path = clean(payload.path || payload.source, 100);
+  const notes = clean(payload.notes, 300);
+  const results = payload.results
+    ? clean(typeof payload.results === 'string' ? payload.results : JSON.stringify(payload.results), 600)
+    : '';
 
-  const { form, name, contact, email, results, path } = payload;
+  if (!contact && !name) return json(event, 400, { error: 'Пустая заявка' });
+
+  const fields = [
+    `<b>Форма:</b> ${escapeHtml(form || 'unknown')}`,
+    name && `<b>Имя:</b> ${escapeHtml(name)}`,
+    contact && `<b>Контакт:</b> ${escapeHtml(contact)}`,
+    path && `<b>Раздел:</b> ${escapeHtml(path)}`,
+    notes && `<b>Заметка:</b> ${escapeHtml(notes)}`,
+    results && `<b>Результаты теста:</b> <code>${escapeHtml(results)}</code>`
+  ].filter(Boolean);
 
   const lines = [
     `🔔 <b>Новая заявка с сайта</b>`,
     ``,
-    `<b>Форма:</b> ${form || 'unknown'}`,
-    name && `<b>Имя:</b> ${escapeHtml(name)}`,
-    (email || contact) && `<b>Контакт:</b> ${escapeHtml(email || contact)}`,
-    path && `<b>Раздел:</b> ${escapeHtml(path)}`,
-    results && `<b>Результаты теста:</b> <code>${escapeHtml(typeof results === 'string' ? results : JSON.stringify(results))}</code>`,
+    ...fields,
     ``,
     `<i>${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК</i>`
-  ].filter(Boolean).join('\n');
+  ].join('\n');
 
   try {
     const resp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
@@ -60,14 +65,12 @@ export const handler = async (event) => {
     });
     const data = await resp.json();
     if (!data.ok) {
-      return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: 'Telegram API error', details: data }) };
+      console.error('Telegram API error:', JSON.stringify(data));
+      return json(event, 502, { error: 'Не удалось отправить' });
     }
-    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true }) };
+    return json(event, 200, { ok: true });
   } catch (e) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
+    console.error('tg-lead failed:', e.message);
+    return json(event, 500, { error: 'Не удалось отправить' });
   }
 };
-
-function escapeHtml(s) {
-  return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-}

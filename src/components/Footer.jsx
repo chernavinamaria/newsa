@@ -23,7 +23,7 @@ export default function Footer() {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-brand-accent/5 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2"></div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-        <div className="grid md:grid-cols-4 gap-10 md:gap-16 mb-10 md:mb-20">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12 mb-10 md:mb-20">
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-brand-yellow rounded-xl flex items-center justify-center text-brand-dark font-black text-xl italic shadow-lg shadow-brand-yellow/20">SA</div>
@@ -42,15 +42,35 @@ export default function Footer() {
             </div>
           </div>
           
+          {/* Обычные ссылки на страницы услуг: работают без JS и видны поисковикам */}
+          <div>
+            <h4 className="font-black uppercase tracking-widest text-xs mb-8 text-brand-yellow">Услуги</h4>
+            <ul className="space-y-4">
+              {[
+                { name: 'Тест Gallup', href: '/gallup-test' },
+                { name: 'Карьерная консультация', href: '/karernaya-konsultaciya' },
+                { name: 'Профориентация 16+', href: '/proforientaciya' },
+                { name: 'Тренинги для команд', href: '/treningi-dlya-komand' },
+                { name: 'Онлайн-программа', href: '/program' },
+                { name: 'Бесплатный тест', href: '/test-na-silnye-storony' }
+              ].map((item) => (
+                <li key={item.href}>
+                  <a href={item.href} className="text-gray-400 hover:text-white transition-colors font-bold uppercase text-[10px] tracking-[0.2em]">{item.name}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div>
             <h4 className="font-black uppercase tracking-widest text-xs mb-8 text-brand-yellow">Навигация</h4>
             <ul className="space-y-4">
               {[
-                { name: 'Программы', href: '#products' },
-                { name: 'Методология', href: '#methodology' },
-                { name: 'Команда', href: '#team' },
-                { name: 'Отзывы', href: '#reviews' },
-                { name: 'Новости', href: '#news' }
+                // Со слэшем: футер стоит и на внутренних страницах, якорь должен вести на главную
+                { name: 'Программы', href: '/#products' },
+                { name: 'Методология', href: '/#methodology' },
+                { name: 'Команда', href: '/#team' },
+                { name: 'Отзывы', href: '/#reviews' },
+                { name: 'Новости', href: '/#news' }
               ].map((item) => (
                 <li key={item.name}>
                   <a href={item.href} className="text-gray-400 hover:text-white transition-colors font-bold uppercase text-[10px] tracking-[0.2em]">{item.name}</a>

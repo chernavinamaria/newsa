@@ -1,13 +1,27 @@
 // Telegram webhook — receives updates from bot, auto-replies to /start,
 // forwards user messages to Maria's chat.
-// Register with: https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<site>/.netlify/functions/tg-webhook
+// Register with setWebhook: url=https://<site>/.netlify/functions/tg-webhook,
+// secret_token=<значение TG_WEBHOOK_SECRET из переменных Netlify>, allowed_updates=["message"]
+
+import { safeEqual } from '../lib/guard.js';
 
 export const handler = async (event) => {
   const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
   const TG_CHAT_ID = process.env.TG_CHAT_ID;
+  const TG_WEBHOOK_SECRET = process.env.TG_WEBHOOK_SECRET;
 
   if (!TG_BOT_TOKEN || !TG_CHAT_ID) {
     return { statusCode: 500, body: 'Not configured' };
+  }
+
+  // Telegram подписывает каждый запрос секретом, который задан при регистрации вебхука
+  // (setWebhook, параметр secret_token). Без этой проверки кто угодно мог бы прислать сюда
+  // поддельное «сообщение от владельца» и писать клиентам от имени школы.
+  if (TG_WEBHOOK_SECRET) {
+    const got = (event.headers || {})['x-telegram-bot-api-secret-token'] || '';
+    if (!safeEqual(got, TG_WEBHOOK_SECRET)) {
+      return { statusCode: 403, body: 'Forbidden' };
+    }
   }
 
   let update;
@@ -17,8 +31,8 @@ export const handler = async (event) => {
     return { statusCode: 200, body: 'ok' };
   }
 
-  const msg = update.message;
-  if (!msg) return { statusCode: 200, body: 'ok' };
+  const msg = update && update.message;
+  if (!msg || !msg.chat || !msg.from) return { statusCode: 200, body: 'ok' };
 
   const send = (chatId, text) =>
     fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {

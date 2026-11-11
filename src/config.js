@@ -1,10 +1,19 @@
-export const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
+export const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
 export const BACKEND_URL = 'https://sa-api-backend.netlify.app/.netlify/functions';
 
 // Онлайн-оплата: false = вместо формы оплаты показывается заглушка
 // «свяжитесь с нами». Включить в true после подключения БОЕВОГО терминала
 // T-Business (см. CLAUDE.md, секция T-Business).
-export const PAYMENTS_ENABLED = false;
+export const PAYMENTS_ENABLED = true;
+
+// Ссылки на оплату тарифов программы «Сильные стороны: от таланта к мастерству».
+// Пока пустые — кнопки на /program собирают заявку в CRM и бота.
+// Как появятся страницы оплаты в GetCourse — вставить сюда, кнопки сами станут «Оплатить».
+export const PROGRAM_CHECKOUT = {
+  observer: '',     // «Наблюдатель», 4 500 ₽
+  researcher: '',   // «Исследователь», 19 500 ₽
+  architect: ''     // «Архитектор», 49 000 ₽
+};
 
 // Простая функция для отправки заявки: параллельно в Google Sheet + Telegram
 export async function submitLead(payload) {

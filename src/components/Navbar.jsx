@@ -45,15 +45,15 @@ export default function Navbar() {
             }`}>
               SA
             </div>
-            <span className={`font-black uppercase tracking-tighter text-brand-dark transition-all ${
-              isScrolled ? 'hidden sm:inline text-sm md:text-base' : 'inline text-xs sm:text-sm md:text-base'
-            }`}>
+            {/* На телефонах название скрыто: вместе с кнопкой теста оно не помещалось
+                в шапку и выталкивало кнопку меню за край экрана. */}
+            <span className="hidden sm:inline font-black uppercase tracking-tighter text-brand-dark text-sm md:text-base">
               Strengths <span className="text-brand-accent">Academy</span>
             </span>
           </div>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-6 xl:gap-8">
+          <div className="hidden lg:flex items-center gap-4 xl:gap-8">
             {navLinks.map((link) => (
               <a
                 key={link.name}
@@ -82,7 +82,7 @@ export default function Navbar() {
                href="https://t.me/strengthsacademy_bot?start=fromsite"
                target="_blank"
                rel="noopener noreferrer"
-               className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-brand-dark text-white rounded-full font-bold text-[10px] uppercase tracking-widest hover:bg-brand-accent transition-all shadow-md whitespace-nowrap"
+               className="hidden md:flex lg:hidden xl:flex items-center gap-2 px-4 py-2.5 bg-brand-dark text-white rounded-full font-bold text-[10px] uppercase tracking-widest hover:bg-brand-accent transition-all shadow-md whitespace-nowrap"
              >
                Связаться
              </a>

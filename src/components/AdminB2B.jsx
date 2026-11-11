@@ -17,11 +17,9 @@ const P_STATUS_COLORS = {
   'Тест пройден': 'bg-brand-green text-brand-dark'
 };
 
+// Все запросы к CRM идут через POST: пароль в теле запроса, а не в адресной строке
 function api(action, params = {}) {
-  const url = new URL(CRM_URL);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  return fetch(url.toString(), { redirect: 'follow' }).then(r => r.json());
+  return apiPost({ type: action, ...params });
 }
 function apiPost(body) {
   return fetch(CRM_URL, {

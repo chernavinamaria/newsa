@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Quote, Star, X, ArrowRight } from 'lucide-react';
 
-const reviews = [
+export const reviews = [
   {
     name: 'Абдуджаббор Абдувахидов',
     company: 'Директор по логистике · Auchan Russia',

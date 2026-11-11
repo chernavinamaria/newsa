@@ -16,11 +16,9 @@ const STATUS_COLORS = {
 
 const STORAGE_KEY = 'sa_admin_password';
 
+// Все запросы к CRM идут через POST: пароль в теле запроса, а не в адресной строке
 function api(action, params = {}) {
-  const url = new URL(CRM_URL);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  return fetch(url.toString(), { redirect: 'follow' }).then(r => r.json());
+  return apiPost({ type: action, ...params });
 }
 
 function apiPost(body) {
@@ -174,9 +172,9 @@ export default function Admin() {
   if (!loggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-dark px-6">
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        {/* Без анимации появления: framer-motion замирает на середине, если вкладка
+            не в фокусе при загрузке, и форма входа остаётся полупрозрачной или невидимой. */}
+        <form
           onSubmit={(e) => { e.preventDefault(); tryLogin(password); }}
           className="w-full max-w-md bg-white rounded-[2rem] p-8 md:p-10 shadow-2xl"
         >
@@ -207,7 +205,7 @@ export default function Admin() {
           >
             {loading ? 'Проверяю...' : 'Войти'}
           </button>
-        </motion.form>
+        </form>
       </div>
     );
   }
@@ -319,13 +317,13 @@ export default function Admin() {
                   </div>
                   <div className="font-black text-brand-dark truncate">{l.Имя || '—'}</div>
                   <div className="text-sm text-gray-500 truncate flex items-center gap-2">
-                    {l.Контакт?.includes('@') ? <Mail size={12} /> : <MessageSquare size={12} />}
+                    {String(l.Контакт ?? '').includes('@') ? <Mail size={12} /> : <MessageSquare size={12} />}
                     {l.Контакт || '—'}
                   </div>
                 </div>
                 <div className="text-xs text-gray-400 md:text-right">
                   {l.Источник && <div className="italic truncate">{l.Источник}</div>}
-                  {l.Заметки && <div className="italic text-gray-500 truncate max-w-xs">💬 {l.Заметки.substring(0, 40)}{l.Заметки.length > 40 ? '…' : ''}</div>}
+                  {l.Заметки && <div className="italic text-gray-500 truncate max-w-xs">💬 {String(l.Заметки).substring(0, 40)}{String(l.Заметки).length > 40 ? '…' : ''}</div>}
                 </div>
               </div>
             </div>
@@ -339,10 +337,9 @@ export default function Admin() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6">
           <div className="absolute inset-0 bg-brand-dark/70 backdrop-blur-sm" onClick={() => { setSelected(null); setEditingField(null); }} />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          {/* Без анимации выезда: если она не доигрывает, панель остаётся за краем экрана
+              и пользователь видит пустоту вместо карточки заявки. */}
+          <div
             className="relative w-full md:max-w-2xl md:max-h-[85vh] bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-y-auto"
           >
             <div className="sticky top-0 bg-white border-b border-brand-light p-4 md:p-6 flex items-center justify-between z-10">
@@ -483,7 +480,7 @@ export default function Admin() {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

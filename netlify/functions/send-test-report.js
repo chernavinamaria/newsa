@@ -1,6 +1,8 @@
 // Sends the metaprograms test report to the user via Resend.
 // Env vars: RESEND_API_KEY, FROM_EMAIL (default: hello@strengthsacademy.ru)
 
+import { precheck, parseBody, json, clean, isEmail, tooMany } from '../lib/guard.js';
+
 const RESULT_META = {
   toward: {
     title: 'К цели',
@@ -241,60 +243,75 @@ function escapeHtml(s) {
   return String(s || '').replace(/[<>&"']/g, c => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+
+
+// ===== Обработчик =====
+// Письмо уходит на адрес, который ввёл посетитель, поэтому функция проверяет всё,
+// что приходит снаружи: адрес, состав результатов и частоту запросов. Иначе через неё
+// можно было бы рассылать письма от имени школы на чужие адреса.
+
+const VALID_PAIRS = Object.keys(PAIR_TITLES);
+const VALID_POLES = Object.keys(RESULT_META);
+
+function normalizeResults(raw) {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 8) return null;
+  const out = [];
+  for (const r of raw) {
+    if (!r || typeof r !== 'object') return null;
+    if (!VALID_PAIRS.includes(r.pair) || !VALID_POLES.includes(r.pole)) return null;
+    const n = Math.round(Number(r.strength));
+    out.push({ pair: r.pair, pole: r.pole, strength: Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0 });
+  }
+  return out;
+}
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS, body: '' };
-  }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: 'Method not allowed' };
-  }
+  const rejected = precheck(event);
+  if (rejected) return rejected;
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const FROM_EMAIL = process.env.FROM_EMAIL || 'Strengths Academy <hello@strengthsacademy.ru>';
+  if (!RESEND_API_KEY) return json(event, 500, { error: 'Not configured' });
 
-  if (!RESEND_API_KEY) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'RESEND_API_KEY not configured' }) };
+  const payload = parseBody(event);
+  if (!payload) return json(event, 400, { error: 'Invalid JSON' });
+
+  const email = clean(payload.email, 254).toLowerCase();
+  const name = clean(payload.name, 60);
+  const results = normalizeResults(payload.results);
+  if (!isEmail(email)) return json(event, 400, { error: 'Некорректный email' });
+  if (!results) return json(event, 400, { error: 'Некорректные результаты теста' });
+
+  // С одного адреса в сети: 5 писем за 10 минут. На один почтовый ящик: 3 письма в сутки.
+  // Всего: 60 писем в час.
+  if (await tooMany(event, 'test-report', [
+    { by: 'ip', limit: 5, windowSec: 600 },
+    { by: `to:${email}`, limit: 3, windowSec: 86400 },
+    { by: 'all', limit: 60, windowSec: 3600 }
+  ])) {
+    return json(event, 429, { error: 'Слишком много запросов. Попробуйте позже.' });
   }
-
-  let payload;
-  try { payload = JSON.parse(event.body || '{}'); }
-  catch { return { statusCode: 400, headers: CORS, body: 'Invalid JSON' }; }
-
-  const { name, email, results } = payload;
-  if (!email || !results) {
-    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'email and results required' }) };
-  }
-
-  const html = buildHtml(name, results);
-  const subject = 'Ваш профиль метапрограмм · Strengths Academy';
 
   try {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [email],
-        subject,
-        html,
+        subject: 'Ваш профиль метапрограмм · Strengths Academy',
+        html: buildHtml(name, results),
         reply_to: 'strengthsacademy.ru@gmail.com'
       })
     });
-    const data = await resp.json();
+    const data = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: 'Resend error', details: data }) };
+      console.error('Resend error:', JSON.stringify(data));
+      return json(event, 502, { error: 'Не удалось отправить письмо' });
     }
-    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, id: data.id }) };
+    return json(event, 200, { ok: true });
   } catch (e) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
+    console.error('send-test-report failed:', e.message);
+    return json(event, 500, { error: 'Не удалось отправить письмо' });
   }
 };

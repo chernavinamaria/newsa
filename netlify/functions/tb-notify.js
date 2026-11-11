@@ -4,8 +4,9 @@
 
 import { createHash } from 'crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
+import { safeEqual } from '../lib/guard.js';
 
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbywcAbQ_8lLhVDtVziA0r4v8WasU42WI2Cfx3K-th7xqvyJ3aSWELbXggNSfZ5pXlIz/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -17,10 +18,17 @@ export const handler = async (event) => {
     return { statusCode: 500, body: 'Not configured' };
   }
 
+  if ((event.body || '').length > 20000) {
+    return { statusCode: 413, body: 'Too large' };
+  }
+
   let n;
   try {
     n = JSON.parse(event.body || '{}');
   } catch {
+    return { statusCode: 400, body: 'Invalid JSON' };
+  }
+  if (!n || typeof n !== 'object' || Array.isArray(n)) {
     return { statusCode: 400, body: 'Invalid JSON' };
   }
 
@@ -37,7 +45,7 @@ export const handler = async (event) => {
     .update(Object.keys(scalars).sort().map((k) => scalars[k]).join(''), 'utf8')
     .digest('hex');
 
-  if (!n.Token || expected !== String(n.Token).toLowerCase()) {
+  if (!n.Token || !safeEqual(expected, String(n.Token).toLowerCase())) {
     console.error('TB notify: bad token', JSON.stringify({ OrderId: n.OrderId, Status: n.Status }));
     return { statusCode: 403, body: 'Bad token' };
   }
@@ -47,14 +55,24 @@ export const handler = async (event) => {
   // T-Bank не присылает контакт в нотификации — берём из blob-хранилища по OrderId
   // (сохранён в tb-init). Fallback на пустой объект, если запись не найдена.
   let data = {};
+  let store = null;
+  let info = null;
   try {
     connectLambda(event);
-    const store = getStore('sa-payments');
-    const info = await store.get(n.OrderId, { type: 'json' });
+    store = getStore('sa-payments');
+    info = await store.get(String(n.OrderId), { type: 'json' });
     if (info) data = { Name: info.name, Email: info.email, Phone: info.phone, Product: info.product };
   } catch (e) {
     console.error('Blob lookup failed:', e.message);
   }
+
+  // Банк повторяет уведомление, если не получил ответ. Чтобы клиент не получил два письма,
+  // а в CRM не появилось две строки, запоминаем, что оплата уже обработана.
+  if (n.Status === 'CONFIRMED' && info && info.confirmedAt) {
+    return { statusCode: 200, body: 'OK' };
+  }
+  // Сумма в уведомлении должна совпасть с ценой, которую мы сами отправили в банк
+  const amountMismatch = Boolean(info && info.amount && Number(n.Amount) !== Number(info.amount));
 
   // «Старт» = самостоятельный продукт, клиенту нужны коды Gallup.
   // Остальное (консультации, коучинг, профориентация) = живая сессия, нужно согласовать время.
@@ -73,6 +91,7 @@ export const handler = async (event) => {
           data.Email && `<b>Email:</b> ${escapeHtml(data.Email)}`,
           data.Phone && `<b>Телефон:</b> ${escapeHtml(data.Phone)}`,
           n.Pan && `<b>Карта:</b> ${escapeHtml(n.Pan)}`,
+          amountMismatch && `⚠️ <b>Сумма не совпадает с ценой продукта (${info.amount / 100} ₽). Проверь платёж в кабинете банка.</b>`,
           ``,
           isSelfServe
             ? `👉 Не забудь купить код Gallup и отправить клиенту в течение 24ч`
@@ -84,6 +103,7 @@ export const handler = async (event) => {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           type: 'payment_success',
+          key: process.env.CRM_SERVICE_KEY || '',
           name: data.Name || '',
           // CRM принимает contact = ТОЛЬКО чистый email/телефон; карту и телефон кладём в заметки
           contact: data.Email || '',
@@ -94,9 +114,13 @@ export const handler = async (event) => {
       }),
       data.Email ? sendConfirmationEmail(data.Email, data.Name, amountRub, n.OrderId, isSelfServe, data.Product) : Promise.resolve()
     ]);
+    if (store && info) {
+      await store.setJSON(String(n.OrderId), { ...info, confirmedAt: new Date().toISOString() })
+        .catch((e) => console.error('Blob update failed:', e.message));
+    }
   } else if (['REJECTED', 'REFUNDED', 'PARTIAL_REFUNDED', 'DEADLINE_EXPIRED'].includes(n.Status)) {
     await notifyTelegram(
-      `⚠️ <b>Платёж: ${n.Status}</b>\n\n<b>Заказ:</b> <code>${escapeHtml(n.OrderId || '')}</code>\n<b>Сумма:</b> ${amountRub} ₽${data.Email ? `\n<b>Email:</b> ${escapeHtml(data.Email)}` : ''}`
+      `⚠️ <b>Платёж: ${escapeHtml(n.Status)}</b>\n\n<b>Заказ:</b> <code>${escapeHtml(n.OrderId || '')}</code>\n<b>Сумма:</b> ${amountRub} ₽${data.Email ? `\n<b>Email:</b> ${escapeHtml(data.Email)}` : ''}`
     ).catch(() => {});
   }
   // Промежуточные статусы (AUTHORIZED, FORM_SHOWED и т.п.) просто подтверждаем
