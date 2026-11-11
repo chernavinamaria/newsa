@@ -1,7 +1,7 @@
 // Netlify Function — forwards form submissions to Telegram bot
 // Requires env vars in Netlify: TG_BOT_TOKEN, TG_CHAT_ID
 
-import { precheck, parseBody, json, clean, escapeHtml, tooMany } from '../lib/guard.js';
+import { precheck, parseBody, json, clean, escapeHtml, tooMany, trapped, gibberishName } from '../lib/guard.js';
 
 export const handler = async (event) => {
   const rejected = precheck(event);
@@ -32,6 +32,15 @@ export const handler = async (event) => {
   const results = payload.results
     ? clean(typeof payload.results === 'string' ? payload.results : JSON.stringify(payload.results), 600)
     : '';
+
+  // Спам-бот (заполнил скрытое поле-ловушку или подписался случайными буквами):
+  // отвечаем «принято», но в чат ничего не шлём, чтобы бот не узнал, что отсеян.
+  // Проверка стоит раньше проверки на пустую заявку: так её можно проверять на проде
+  // пустой заявкой с ловушкой, не создавая сообщений (см. _tmp_xlsx/verify-live.mjs).
+  if (trapped(payload) || gibberishName(name)) {
+    console.warn('tg-lead: spam dropped', trapped(payload) ? 'trap' : 'name');
+    return json(event, 200, { ok: true });
+  }
 
   if (!contact && !name) return json(event, 400, { error: 'Пустая заявка' });
 

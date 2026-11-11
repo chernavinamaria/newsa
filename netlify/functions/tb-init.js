@@ -3,11 +3,11 @@
 
 import { createHash, randomBytes } from 'crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
-import { precheck, parseBody, json, clean, isEmail, escapeHtml, tooMany } from '../lib/guard.js';
+import { precheck, parseBody, json, clean, isEmail, escapeHtml, tooMany, trapped } from '../lib/guard.js';
 
 const SITE_URL = 'https://www.strengthsacademy.ru';
 const BACKEND_URL = 'https://sa-api-backend.netlify.app/.netlify/functions';
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbzE4LCgMdmofkH4OxFyn56f5AJvaw7kCohL3pLi-beOdTq29gmBSBcaW7CXQw8Pncep/exec';
 
 // Цены только на сервере — сумма с клиента не принимается (защита от подмены)
 const CATALOG = {
@@ -35,6 +35,8 @@ export const handler = async (event) => {
 
   const payload = parseBody(event);
   if (!payload) return json(event, 400, { error: 'Invalid JSON' });
+  // Заполнено поле-ловушка: это бот, платёж не создаём
+  if (trapped(payload)) return json(event, 400, { error: 'Не удалось создать платёж' });
 
   const productId = clean(payload.productId, 40);
   const name = clean(payload.name, 100);

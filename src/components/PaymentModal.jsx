@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Lock, Loader2, CreditCard, MessageCircle, Clock } from 'lucide-react';
 import { BACKEND_URL, PAYMENTS_ENABLED } from '../config';
+import Honeypot, { trapValue } from './Honeypot';
 
 export default function PaymentModal({ isOpen, onClose, product, onCloseAll }) {
   const [name, setName] = useState('');
@@ -26,6 +27,11 @@ export default function PaymentModal({ isOpen, onClose, product, onCloseAll }) {
   const handlePay = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
+    // Ловушка для ботов: платёж не создаём
+    if (trapValue(e.currentTarget)) {
+      setError('Не удалось создать платёж. Попробуйте ещё раз.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -166,6 +172,7 @@ export default function PaymentModal({ isOpen, onClose, product, onCloseAll }) {
                   {' '}и{' '}
                   <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-privacy'))} className="underline hover:text-brand-dark">политику конфиденциальности</button>.
                 </p>
+                <Honeypot />
               </form>
               )}
             </div>

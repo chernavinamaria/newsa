@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Target, Sparkles, Users, User, CheckCircle2 } from 'lucide-react';
 import { submitLead } from '../config';
+import Honeypot, { trapValue } from './Honeypot';
 
 const PATHS = {
   team: {
@@ -41,6 +42,12 @@ export default function CTASection() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.contact) return;
+    // Ловушка для ботов: делаем вид, что отправили, но никуда не шлём
+    if (trapValue(e.currentTarget)) {
+      setStatus('sent');
+      setForm({ name: '', contact: '' });
+      return;
+    }
     setStatus('sending');
     const payload = {
       form: `contact-request-${path}`,
@@ -210,6 +217,7 @@ export default function CTASection() {
                     >
                       {status === 'sending' ? 'Отправляем...' : (<>{p.cta} <ArrowRight size={18} /></>)}
                     </button>
+                    <Honeypot />
                   </form>
                 )}
               </div>

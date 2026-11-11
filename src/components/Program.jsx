@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Footer from './Footer';
 import { submitLead, PROGRAM_CHECKOUT } from '../config';
+import Honeypot, { trapValue } from './Honeypot';
 import evgeniaImg from '../assets/Evgenia.jpg';
 import ekaterinaImg from '../assets/Ekaterina.jpg';
 
@@ -276,6 +277,12 @@ export default function Program() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.contact) return;
+    // Ловушка для ботов: делаем вид, что отправили, но никуда не шлём
+    if (trapValue(e.currentTarget)) {
+      setStatus('sent');
+      setForm({ name: '', contact: '', tariff: form.tariff });
+      return;
+    }
     setStatus('sending');
     try {
       await submitLead({
@@ -787,6 +794,7 @@ export default function Program() {
                       политикой конфиденциальности
                     </button>
                   </p>
+                  <Honeypot />
                 </form>
               )}
             </div>

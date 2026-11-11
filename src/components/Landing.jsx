@@ -7,6 +7,7 @@ import { programs } from './Products';
 import { reviews } from './Reviews';
 import { clients } from './Clients';
 import { submitLead } from '../config';
+import Honeypot, { trapValue } from './Honeypot';
 import { LANDING_NAV, RELATED_LINKS, SITE_URL } from '../seo/pages';
 
 // SEO-лендинг. Контент приходит из src/seo/pages.js, страница пререндерится
@@ -115,6 +116,12 @@ export default function Landing({ page }) {
     const contact = form.contact.trim();
     if (!name || !CONTACT_RE.test(contact)) {
       setStatus('invalid');
+      return;
+    }
+    // Ловушка для ботов: делаем вид, что отправили, но никуда не шлём
+    if (trapValue(e.currentTarget)) {
+      setStatus('sent');
+      setForm({ name: '', contact: '' });
       return;
     }
     setStatus('sending');
@@ -634,6 +641,7 @@ export default function Landing({ page }) {
                         политикой конфиденциальности
                       </button>
                     </p>
+                    <Honeypot />
                   </form>
                 )}
               </div>

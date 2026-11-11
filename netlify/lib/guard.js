@@ -6,8 +6,7 @@ import { getStore, setEnvironmentContext } from '@netlify/blobs';
 
 const ALLOWED_ORIGINS = new Set([
   'https://www.strengthsacademy.ru',
-  'https://strengthsacademy.ru',
-  'https://wondrous-cannoli-7dc5a1.netlify.app' // стейджинг для коллег
+  'https://strengthsacademy.ru'
 ]);
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
@@ -66,6 +65,23 @@ export function parseBody(event) {
 export function clean(value, max = 200) {
   if (value === null || value === undefined) return '';
   return String(value).replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+// Поле-ловушка в формах сайта (src/components/Honeypot.jsx): человек его не видит,
+// бот заполняет. Заполнено = запрос от бота.
+export function trapped(payload) {
+  return clean(payload && payload.comment2, 50) !== '';
+}
+
+// Имя из случайных букв, которым подписываются спам-боты: одно слово только из латиницы,
+// от 10 букв, вперемешку заглавные и строчные (ZitAaUQADXkGQdbM). Обычные имена
+// (Aleksandra, ALEKSANDRA, Anna-Maria, Мария) под правило не попадают.
+export function gibberishName(name) {
+  const s = String(name || '').trim();
+  if (!/^[A-Za-z]{10,}$/.test(s)) return false;
+  const upperInside = (s.slice(1).match(/[A-Z]/g) || []).length;
+  const lower = (s.match(/[a-z]/g) || []).length;
+  return upperInside >= 4 && lower >= 4;
 }
 
 export function isEmail(value) {

@@ -4,7 +4,7 @@
 
 import { precheck, parseBody, json, clean, isEmail, tooMany } from '../lib/guard.js';
 
-const CRM_URL = 'https://script.google.com/macros/s/AKfycbwAttP0aT4mD9bg5VNydcSVQm0h-YD9bslp_Xr-6uNUGv18bEWiTxqCLK5WJeUe2GRP/exec';
+const CRM_URL = 'https://script.google.com/macros/s/AKfycbzE4LCgMdmofkH4OxFyn56f5AJvaw7kCohL3pLi-beOdTq29gmBSBcaW7CXQw8Pncep/exec';
 
 // Неверные пароли считаем: 10 ошибок с одного адреса за 15 минут или 40 со всех адресов,
 // после этого функция перестаёт проверять пароль до конца окна (защита от подбора).

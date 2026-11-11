@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Send, Target } from 'lucide-react';
 import { submitLead } from '../config';
+import Honeypot, { trapValue } from './Honeypot';
 
 // Test constructed from the official metaprograms test (Метапрограммы.docx)
 // Each question has 6 options, multiple selection allowed.
@@ -302,6 +303,11 @@ export default function Test({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Ловушка для ботов: результат показываем, но заявку и письмо не отправляем
+    if (trapValue(e.currentTarget)) {
+      setStep('results');
+      return;
+    }
     setSubmitting(true);
     const results = computeResults();
     const payload = {
@@ -543,6 +549,7 @@ export default function Test({ isOpen, onClose }) {
                         Политика
                       </button>
                     </p>
+                    <Honeypot />
                   </form>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 // Sends the metaprograms test report to the user via Resend.
 // Env vars: RESEND_API_KEY, FROM_EMAIL (default: hello@strengthsacademy.ru)
 
-import { precheck, parseBody, json, clean, isEmail, tooMany } from '../lib/guard.js';
+import { precheck, parseBody, json, clean, isEmail, tooMany, trapped, gibberishName } from '../lib/guard.js';
 
 const RESULT_META = {
   toward: {
@@ -281,6 +281,12 @@ export const handler = async (event) => {
   const results = normalizeResults(payload.results);
   if (!isEmail(email)) return json(event, 400, { error: 'Некорректный email' });
   if (!results) return json(event, 400, { error: 'Некорректные результаты теста' });
+
+  // Спам-бот: отвечаем «отправлено», письмо не шлём
+  if (trapped(payload) || gibberishName(name)) {
+    console.warn('test-report: spam dropped');
+    return json(event, 200, { ok: true });
+  }
 
   // С одного адреса в сети: 5 писем за 10 минут. На один почтовый ящик: 3 письма в сутки.
   // Всего: 60 писем в час.
