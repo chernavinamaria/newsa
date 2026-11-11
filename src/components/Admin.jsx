@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CRM_URL, BACKEND_URL } from '../config';
-import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare, Send, KeyRound, Building2, Inbox } from 'lucide-react';
+import { Lock, LogOut, RefreshCw, Search, Filter, Trash2, Edit3, Save, X, TrendingUp, Users, Calendar, Mail, MessageSquare, Send, KeyRound, Building2, Inbox, Eye, EyeOff } from 'lucide-react';
 import AdminB2B from './AdminB2B';
 
 const STATUSES = ['Новая', 'В работе', 'Ожидает оплаты', 'Оплачено', 'Закрыто', 'Отказ'];
@@ -53,6 +53,14 @@ export default function Admin() {
   const [codesText, setCodesText] = useState('');
   const [codesStatus, setCodesStatus] = useState('idle'); // idle | sending | sent | error
   const [codesError, setCodesError] = useState('');
+
+  const [passwordOpen, setPasswordOpen] = useState(false);
+
+  // После смены пароля все следующие запросы идут уже с новым
+  const onPasswordChanged = (pw) => {
+    setPassword(pw);
+    localStorage.setItem(STORAGE_KEY, pw);
+  };
 
   const openCodesPanel = (lead) => {
     // Контакт бывает "email / телефон" — вытаскиваем email
@@ -214,10 +222,10 @@ export default function Admin() {
     <div className="min-h-screen bg-brand-light">
       {/* Top bar */}
       <div className="bg-brand-dark text-white sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-brand-yellow rounded-lg flex items-center justify-center text-brand-dark font-black italic">SA</div>
-            <div>
+            <div className="w-9 h-9 shrink-0 bg-brand-yellow rounded-lg flex items-center justify-center text-brand-dark font-black italic">SA</div>
+            <div className="hidden sm:block">
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-yellow">Admin</div>
               <div className="text-sm font-black uppercase italic">CRM · Заявки</div>
             </div>
@@ -228,22 +236,30 @@ export default function Admin() {
                 onClick={() => setView('leads')}
                 className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${view === 'leads' ? 'bg-brand-yellow text-brand-dark' : 'text-white/70 hover:text-white'}`}
               >
-                <Inbox size={13} /> Заявки
+                <Inbox size={13} className="hidden sm:block" /> Заявки
               </button>
               <button
                 onClick={() => setView('b2b')}
                 className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${view === 'b2b' ? 'bg-brand-yellow text-brand-dark' : 'text-white/70 hover:text-white'}`}
               >
-                <Building2 size={13} /> B2B
+                <Building2 size={13} className="hidden sm:block" /> B2B
               </button>
             </div>
             {view === 'leads' && (
-              <button onClick={() => { loadLeads(); loadStats(); }} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+              <button onClick={() => { loadLeads(); loadStats(); }} title="Обновить" aria-label="Обновить" className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               </button>
             )}
-            <button onClick={logout} className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
-              <LogOut size={14} /> Выйти
+            <button
+              onClick={() => setPasswordOpen(true)}
+              title="Сменить пароль"
+              aria-label="Сменить пароль"
+              className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
+            >
+              <KeyRound size={16} />
+            </button>
+            <button onClick={logout} title="Выйти" className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
+              <LogOut size={14} /> <span className="hidden sm:inline">Выйти</span>
             </button>
           </div>
         </div>
@@ -332,6 +348,10 @@ export default function Admin() {
         </>
         )}
       </div>
+
+      {passwordOpen && (
+        <ChangePassword onClose={() => setPasswordOpen(false)} onChanged={onPasswordChanged} />
+      )}
 
       {/* Details modal */}
       {selected && (
@@ -483,6 +503,134 @@ export default function Admin() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Правила нового пароля. Знак из списка обязателен не только ради стойкости: пароль лежит
+// в ячейке таблицы, и строку вроде «12345678» или «12-nov-2026» таблица превратила бы
+// в число или дату, после чего вход перестал бы работать. Знаки < > { } сервер вырезает.
+function passwordProblem(pw) {
+  if (pw.length < 8) return 'Пароль должен быть не короче 8 символов';
+  if (pw.length > 100) return 'Пароль должен быть не длиннее 100 символов';
+  if (/\s/.test(pw)) return 'В пароле не должно быть пробелов';
+  if (/[<>{}]/.test(pw)) return 'В пароле не должно быть знаков < > { }';
+  if (pw.startsWith("'")) return 'Пароль не должен начинаться с апострофа';
+  if (!/[A-Za-zА-Яа-яЁё]/.test(pw)) return 'Добавьте в пароль хотя бы одну букву';
+  if (!/\d/.test(pw)) return 'Добавьте в пароль хотя бы одну цифру';
+  if (!/[!?_*#&~^]/.test(pw)) return 'Добавьте в пароль хотя бы один из знаков ! ? _ * # & ~ ^';
+  return '';
+}
+
+function ChangePassword({ onClose, onChanged }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [again, setAgain] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const problem = passwordProblem(next)
+      || (next !== again ? 'Новый пароль и его повтор не совпадают' : '')
+      || (next === current ? 'Новый пароль совпадает с текущим' : '');
+    if (problem) { setError(problem); return; }
+    setBusy(true);
+    setError('');
+    const r = await apiPost({ type: 'admin_change_password', oldPassword: current, newPassword: next })
+      .catch(() => ({ error: 'Нет связи с сервером. Пароль, скорее всего, не изменён: попробуйте ещё раз.' }));
+    if (!r.success) {
+      setBusy(false);
+      setError(r.error === 'Старый пароль неверный' ? 'Текущий пароль введён неверно' : (r.error || 'Не удалось сменить пароль'));
+      return;
+    }
+    onChanged(next);
+    // Контрольный вход: убеждаемся, что в таблицу записалось ровно то, что введено
+    const check = await apiPost({ type: 'admin_verify', password: next }).catch(() => null);
+    setBusy(false);
+    if (check && !check.success) {
+      setError('Пароль записан, но проверочный вход с ним не прошёл. Откройте таблицу CRM, лист «_Настройки», и впишите пароль в ячейку B2 вручную.');
+      return;
+    }
+    setDone(true);
+  };
+
+  const field = 'w-full bg-brand-light border-2 border-transparent focus:border-brand-yellow rounded-xl px-4 py-3 text-sm text-brand-dark placeholder:text-gray-400 focus:outline-none transition-colors';
+  const label = 'block text-[10px] font-black uppercase tracking-widest text-brand-dark/60 mb-1.5';
+  const type = show ? 'text' : 'password';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6">
+      <div className="absolute inset-0 bg-brand-dark/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full md:max-w-md max-h-[90vh] bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-y-auto">
+        <div className="border-b border-brand-light p-4 md:p-6 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-accent">Админка</div>
+            <div className="text-lg font-black uppercase italic tracking-tighter text-brand-dark">Смена пароля</div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Закрыть" className="p-2 bg-brand-light hover:bg-gray-200 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="p-4 md:p-6">
+            <div className="text-brand-green font-black uppercase tracking-widest text-sm mb-2">✓ Пароль изменён</div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Здесь вы остаётесь в админке. На других устройствах и у коллег она попросит войти заново, уже с новым паролем.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full mt-5 py-3.5 bg-brand-dark hover:bg-brand-accent text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
+            >
+              Готово
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="p-4 md:p-6 space-y-4">
+            <div>
+              <label htmlFor="pw-current" className={label}>Текущий пароль</label>
+              <input id="pw-current" type={type} autoFocus autoComplete="current-password" value={current} onChange={e => setCurrent(e.target.value)} className={field} />
+            </div>
+            <div>
+              <label htmlFor="pw-next" className={label}>Новый пароль</label>
+              <input id="pw-next" type={type} autoComplete="new-password" value={next} onChange={e => setNext(e.target.value)} className={field} />
+              <div className="text-[11px] text-gray-500 leading-relaxed mt-1.5">
+                От 8 символов, без пробелов: буквы, хотя бы одна цифра и один из знаков ! ? _ * # & ~ ^
+              </div>
+            </div>
+            <div>
+              <label htmlFor="pw-again" className={label}>Новый пароль ещё раз</label>
+              <input id="pw-again" type={type} autoComplete="new-password" value={again} onChange={e => setAgain(e.target.value)} className={field} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShow(!show)}
+              className="flex items-center gap-2 text-xs font-bold text-brand-dark/60 hover:text-brand-dark"
+            >
+              {show ? <EyeOff size={14} /> : <Eye size={14} />} {show ? 'Скрыть пароли' : 'Показать пароли'}
+            </button>
+            {error && <div role="alert" className="text-sm font-bold text-red-500 leading-snug">{error}</div>}
+            <button
+              type="submit"
+              disabled={busy || !current || !next || !again}
+              className="w-full py-3.5 bg-brand-dark hover:bg-brand-accent text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors disabled:opacity-50"
+            >
+              {busy ? 'Меняю…' : 'Сменить пароль'}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
